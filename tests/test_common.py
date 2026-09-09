@@ -92,3 +92,53 @@ class Fetch(unittest.TestCase):
             with self.assertRaises(common.FetchError):
                 common.fetch("http://x", sleep=lambda s: None)
         self.assertEqual(urlopen.call_count, 1)
+
+
+class CircuitAndBudget(unittest.TestCase):
+    def setUp(self):
+        common.reset_run(None)
+
+    def tearDown(self):
+        common.reset_run(None)
+
+    def test_network_errors_give_up_after_two_attempts(self):
+        err = urllib.error.URLError("timed out")
+        with mock.patch("sources.common.urllib.request.urlopen", side_effect=[err] * 5) as urlopen:
+            with self.assertRaises(common.FetchError) as ctx:
+                common.fetch("http://slow.example/a", sleep=lambda s: None)
+        self.assertEqual(urlopen.call_count, 2)
+        self.assertIn("network:", str(ctx.exception))
+
+    def test_host_is_skipped_after_two_failed_urls(self):
+        err = urllib.error.URLError("timed out")
+        with mock.patch("sources.common.urllib.request.urlopen", side_effect=[err] * 10) as urlopen:
+            for path in ("a", "b"):
+                with self.assertRaises(common.FetchError):
+                    common.fetch("http://dead.example/" + path, sleep=lambda s: None)
+            calls = urlopen.call_count
+            with self.assertRaises(common.FetchError) as ctx:
+                common.fetch("http://dead.example/c", sleep=lambda s: None)
+        self.assertEqual(urlopen.call_count, calls)  # third URL never hit the network
+        self.assertIn("unreachable earlier this run", str(ctx.exception))
+        # another host is unaffected
+        with mock.patch("sources.common.urllib.request.urlopen", side_effect=[err] * 2):
+            with self.assertRaises(common.FetchError) as ctx2:
+                common.fetch("http://alive.example/a", sleep=lambda s: None)
+        self.assertIn("network:", str(ctx2.exception))
+
+    def test_deadline_skips_fetch(self):
+        common.reset_run(deadline=1.0)  # epoch second 1: long past
+        with mock.patch("sources.common.urllib.request.urlopen") as urlopen:
+            with self.assertRaises(common.FetchError) as ctx:
+                common.fetch("http://x.example/", sleep=lambda s: None)
+        urlopen.assert_not_called()
+        self.assertIn("time budget exhausted", str(ctx.exception))
+
+    def test_exhausted_429_marks_host_dead(self):
+        with mock.patch("sources.common.urllib.request.urlopen", side_effect=[_http_error(429)] * 3) as urlopen:
+            with self.assertRaises(common.FetchError):
+                common.fetch("http://limited.example/a", sleep=lambda s: None)
+            with self.assertRaises(common.FetchError) as ctx:
+                common.fetch("http://limited.example/b", sleep=lambda s: None)
+        self.assertEqual(urlopen.call_count, 3)
+        self.assertIn("unreachable earlier this run", str(ctx.exception))

@@ -5,14 +5,18 @@
   python3 collect.py --dry-run            # print the top candidates per source, write nothing
   python3 collect.py --probe              # one GET per host, print reachability, exit 1 if discord.com is blocked
   python3 collect.py --only youtube,hn    # subset of sources
+  python3 collect.py --budget 240         # seconds; fetches past the deadline are skipped (default from config)
+
+Sources run in parallel threads (one per source; calls inside a source stay sequential and spaced).
 """
 import argparse
 import json
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
-from sources import github, hn, reddit, x, youtube
+from sources import common, github, hn, reddit, x, youtube
 from sources.common import FetchError, fetch, iso, now_utc
 
 SOURCES = {"youtube": youtube, "x": x, "hn": hn, "github": github, "reddit": reddit}
@@ -41,32 +45,41 @@ def verdict(meta, config):
     return "ok"
 
 
-def run(config, hours, only=None, now=None, sources=None):
-    """Run every source in isolation; one failure never aborts the run."""
+def _run_one(mod, config, now, hours):
+    """One source, fully isolated: returns (meta entry, items). Never raises."""
+    t0 = time.time()
+    try:
+        res = mod.collect(config, now=now, hours=hours)
+        items = res["items"]
+        if items:
+            status = "ok"
+        elif res.get("fetched_ok"):
+            status = "parser_suspect"  # HTTP succeeded but nothing parsed: the page structure may have changed
+        else:
+            status = "failed"
+        entry = {"status": status, "count": len(items), "seconds": round(time.time() - t0, 1)}
+        entry.update(res.get("notes", {}))
+        return entry, items
+    except Exception as e:
+        return {"status": "failed", "count": 0, "seconds": round(time.time() - t0, 1),
+                "error": "%s: %s" % (type(e).__name__, e)}, []
+
+
+def run(config, hours, only=None, now=None, sources=None, budget=None):
+    """Run every source in parallel and in isolation; one failure never aborts the run.
+    budget: seconds for the whole collection; fetches attempted after the deadline are skipped."""
     now = now or now_utc()
     sources = sources if sources is not None else SOURCES
-    meta = {"run_at": iso(now), "hours": hours, "sources": {}}
+    selected = [(n, m) for n, m in sources.items() if not only or n in only]
+    common.reset_run(time.time() + budget if budget else None)
+    meta = {"run_at": iso(now), "hours": hours, "budget_seconds": budget, "sources": {}}
     candidates = []
-    for name, mod in sources.items():
-        if only and name not in only:
-            continue
-        t0 = time.time()
-        try:
-            res = mod.collect(config, now=now, hours=hours)
-            items = res["items"]
-            if items:
-                status = "ok"
-            elif res.get("fetched_ok"):
-                status = "parser_suspect"  # HTTP succeeded but nothing parsed: the page structure may have changed
-            else:
-                status = "failed"
-            entry = {"status": status, "count": len(items), "seconds": round(time.time() - t0, 1)}
-            entry.update(res.get("notes", {}))
+    with ThreadPoolExecutor(max_workers=max(1, len(selected))) as pool:
+        futures = [(name, pool.submit(_run_one, mod, config, now, hours)) for name, mod in selected]
+        for name, fut in futures:
+            entry, items = fut.result()
             meta["sources"][name] = entry
             candidates.extend(items)
-        except Exception as e:
-            meta["sources"][name] = {"status": "failed", "count": 0, "seconds": round(time.time() - t0, 1),
-                                     "error": "%s: %s" % (type(e).__name__, e)}
     meta["candidates"] = len(candidates)
     meta["sources_total"] = len(meta["sources"])
     meta["sources_ok"] = sum(1 for s in meta["sources"].values() if s["status"] == "ok")
@@ -95,24 +108,28 @@ def main(argv=None):
     p.add_argument("--only")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--probe", action="store_true")
+    p.add_argument("--budget", type=float, help="seconds for the whole collection (default: config budget_seconds, 240)")
     a = p.parse_args(argv)
     if a.probe:
         return probe()
     config = load_config(a.config)
     hours = a.hours or config.get("hours", 24)
-    data = run(config, hours, only=a.only.split(",") if a.only else None)
+    budget = a.budget or config.get("budget_seconds", 240)
+    t0 = time.time()
+    data = run(config, hours, only=a.only.split(",") if a.only else None, budget=budget)
+    data["meta"]["elapsed_seconds"] = round(time.time() - t0, 1)
     if a.dry_run:
         for name, info in data["meta"]["sources"].items():
             print("== %s: %s" % (name, json.dumps(info, ensure_ascii=False)))
             for c in [c for c in data["candidates"] if c["source"] == name][:5]:
                 print("   %.2f %s | %s | %s" % (c["score"], c["title"][:70], c["author"], c["url"]))
-        print("verdict:", data["meta"]["verdict"])
+        print("verdict: %s (%.1fs)" % (data["meta"]["verdict"], data["meta"]["elapsed_seconds"]))
         return 0
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     with open(a.out, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
     m = data["meta"]
-    print("wrote %s: %d candidates, %d/%d sources ok, verdict=%s" % (a.out, m["candidates"], m["sources_ok"], m["sources_total"], m["verdict"]))
+    print("wrote %s: %d candidates, %d/%d sources ok, %.1fs, verdict=%s" % (a.out, m["candidates"], m["sources_ok"], m["sources_total"], m["elapsed_seconds"], m["verdict"]))
     return 0
 
 
