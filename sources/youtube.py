@@ -6,7 +6,7 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 from datetime import timedelta
 
-from .common import (FetchError, assign_scores, candidate, fetch, hours_between, iso,
+from .common import (assign_scores, candidate, fetch, hours_between, iso,
                      parse_count, parse_iso, relative_age_hours, result)
 
 # sp=EgIIAg%3D%3D is the "upload date: today" filter; hl/gl pin the English locale so ages read "9h ago".
@@ -92,15 +92,15 @@ def collect(config, now, hours, sleep=time.sleep):
         try:
             raws.extend(parse_search_html(fetch(SEARCH_URL.format(q=urllib.parse.quote_plus(q)))))
             fetched_ok = True
-        except FetchError as e:
-            errors["search:" + q] = str(e)
+        except Exception as e:  # FetchError, JSON errors, anything: record and continue with the next query
+            errors["search:" + q] = str(e) or type(e).__name__
         sleep(1)
     for name, cid in cfg.get("channels", {}).items():
         try:
             raws.extend(parse_rss_xml(fetch(RSS_URL.format(cid=cid))))
             fetched_ok = True
-        except (FetchError, ET.ParseError) as e:
-            errors["rss:" + name] = str(e)
+        except Exception as e:
+            errors["rss:" + name] = str(e) or type(e).__name__
     by_id = {}
     for raw in raws:  # RSS rows carry exact timestamps; prefer them over search rows for the same video
         prev = by_id.get(raw["video_id"])

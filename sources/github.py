@@ -1,8 +1,9 @@
 """GitHub trending (daily) HTML page. No auth. Age is unknown by design: the daily list is 'today'."""
 import html as htmllib
 import re
+import time
 
-from .common import FetchError, assign_scores, candidate, fetch, parse_count, result
+from .common import assign_scores, candidate, fetch, parse_count, result
 
 URL = "https://github.com/trending?since=daily"
 _ARTICLE = re.compile(r'<article class="Box-row">(.*?)</article>', re.S)
@@ -37,13 +38,13 @@ def is_ai_repo(item, keywords):
     return any(re.search(r"\b" + re.escape(k.lower()) + r"\b", hay) for k in keywords)
 
 
-def collect(config, now, hours, sleep=None):
+def collect(config, now, hours, sleep=time.sleep):
     cfg = config["github"]
     cap = config.get("per_source_cap", 8)
     try:
         rows = parse_trending_html(fetch(URL))
-    except FetchError as e:
-        return result([], False, errors={"trending": str(e)})
+    except Exception as e:  # FetchError or a parser surprise: the source reports failure, the run continues
+        return result([], False, errors={"trending": str(e) or type(e).__name__})
     items = []
     for r in rows:
         if not is_ai_repo(r, cfg.get("keywords", [])):

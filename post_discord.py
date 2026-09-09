@@ -61,6 +61,8 @@ def validate(digest):
                 problems.append("topic %d: source without url" % i)
     if EM_DASH in str(digest.get("one_liner") or ""):
         problems.append("one_liner: em dash")
+    if len(str(digest.get("one_liner") or "")) > 120:
+        problems.append("one_liner over 120 chars (the prompt asks for under 90)")
     return problems
 
 
@@ -93,8 +95,9 @@ def render(digest, prefix=""):
 
 
 def total_chars(payload):
-    return len(payload["content"]) + sum(len(e.get("title", "")) + len(e.get("description", "")) +
-                                         len((e.get("footer") or {}).get("text", "")) for e in payload["embeds"])
+    """Characters counted against Discord's 6,000 embed budget (content has its own 2,000 limit)."""
+    return sum(len(e.get("title", "")) + len(e.get("description", "")) +
+               len((e.get("footer") or {}).get("text", "")) for e in payload["embeds"])
 
 
 def enforce_budget(payload):

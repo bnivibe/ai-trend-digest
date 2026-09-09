@@ -11,7 +11,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
-from .common import FetchError, assign_scores, candidate, fetch, hours_between, iso, now_utc, result
+from .common import assign_scores, candidate, fetch, hours_between, iso, now_utc, parse_iso, result
 
 TIMELINE_URL = "https://syndication.twitter.com/srv/timeline-profile/screen-name/{handle}"
 TWEET_URL = "https://cdn.syndication.twimg.com/tweet-result?id={id}&token=a"
@@ -37,7 +37,10 @@ def parse_timeline_html(html):
             continue
         if t.get("conversation_id_str") and t.get("conversation_id_str") != t.get("id_str"):
             continue
-        created = datetime.strptime(t["created_at"], _CREATED).astimezone(timezone.utc)
+        try:
+            created = datetime.strptime(t["created_at"], _CREATED).astimezone(timezone.utc)
+        except (KeyError, ValueError):
+            continue  # one malformed entry must not kill the whole timeline
         rows.append({"id": t.get("id_str"), "handle": (t.get("user") or {}).get("screen_name", ""),
                      "text": text, "created_at": created,
                      "likes": t.get("favorite_count") or 0, "retweets": t.get("retweet_count") or 0})
@@ -47,7 +50,7 @@ def parse_timeline_html(html):
 def parse_tweet_json(text):
     """tweet-result JSON -> the same row shape as parse_timeline_html."""
     t = json.loads(text)
-    created = datetime.strptime(t["created_at"], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+    created = parse_iso(t["created_at"])  # accepts both '...:11.000Z' and '...:11Z'
     return {"id": t.get("id_str"), "handle": (t.get("user") or {}).get("screen_name", ""),
             "text": t.get("text", ""), "created_at": created,
             "likes": t.get("favorite_count") or 0, "retweets": 0}
@@ -71,8 +74,8 @@ def collect(config, now, hours, sleep=time.sleep):
         try:
             rows = parse_timeline_html(fetch(TIMELINE_URL.format(handle=handle)))
             fetched_ok = True
-        except FetchError as e:
-            errors[handle] = str(e)
+        except Exception as e:  # FetchError, JSON errors, anything: record and move to the next account
+            errors[handle] = str(e) or type(e).__name__
             continue
         if rows and hours_between(now, max(r["created_at"] for r in rows)) > stale_hours:
             stale.append(handle)

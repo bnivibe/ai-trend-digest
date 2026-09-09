@@ -3,7 +3,7 @@ import json
 import time
 import urllib.parse
 
-from .common import FetchError, assign_scores, candidate, fetch, hours_between, iso, parse_iso, result
+from .common import assign_scores, candidate, fetch, hours_between, iso, parse_iso, result
 
 API = ("https://hn.algolia.com/api/v1/search?query={q}&tags=story"
        "&numericFilters=created_at_i%3E{since},points%3E{minp}&hitsPerPage=20")
@@ -31,8 +31,8 @@ def collect(config, now, hours, sleep=time.sleep):
             for h in parse_hits(fetch(url)):
                 by_id[h["id"]] = h
             fetched_ok = True
-        except (FetchError, ValueError) as e:
-            errors[kw] = str(e)
+        except Exception as e:  # FetchError, JSON errors, missing keys: record and continue
+            errors[kw] = str(e) or type(e).__name__
     items = []
     for h in by_id.values():
         created = parse_iso(h["created_at"])

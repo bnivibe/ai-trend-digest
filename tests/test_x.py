@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from unittest import mock
 
 from sources import x
+from sources.common import FetchError
 from tests.helpers import fixture
 
 NOW = datetime(2026, 9, 10, 0, 0, tzinfo=timezone.utc)
@@ -62,7 +63,7 @@ class Collect(unittest.TestCase):
         self.assertEqual(sleeps, [1.5, 1.5])
 
     def test_fetch_error_recorded(self):
-        with mock.patch("sources.x.fetch", side_effect=x.FetchError("HTTP 429")):
+        with mock.patch("sources.x.fetch", side_effect=FetchError("HTTP 429")):
             res = x.collect(self.config(["a"]), now=NOW, hours=24, sleep=lambda s: None)
         self.assertEqual(res["notes"]["errors"], {"a": "HTTP 429"})
         self.assertFalse(res["fetched_ok"])
@@ -76,3 +77,26 @@ class FetchTweet(unittest.TestCase):
         self.assertEqual(c["url"], "https://x.com/RobinhoodApp/status/2079195918595764300")
         self.assertEqual(c["engagement"]["likes"], 8725)
         self.assertTrue(c["title"].startswith("Robinhood is now open to AI agents"))
+
+
+class Robustness(unittest.TestCase):
+    def test_malformed_entry_is_skipped_not_fatal(self):
+        good = {"type": "tweet", "content": {"tweet": {"id_str": "1", "conversation_id_str": "1", "full_text": "ok",
+                "created_at": "Wed Sep 09 19:02:43 +0000 2026", "favorite_count": 5, "user": {"screen_name": "a"}}}}
+        bad = {"type": "tweet", "content": {"tweet": {"id_str": "2", "conversation_id_str": "2", "full_text": "no date", "user": {"screen_name": "a"}}}}
+        html = '<script id="__NEXT_DATA__" type="application/json">%s</script>' % json.dumps(
+            {"props": {"pageProps": {"timeline": {"entries": [bad, good]}}}})
+        rows = x.parse_timeline_html(html)
+        self.assertEqual([r["id"] for r in rows], ["1"])
+
+    def test_tweet_result_without_fractional_seconds(self):
+        row = x.parse_tweet_json('{"id_str": "9", "created_at": "2026-07-20T12:00:00Z", "favorite_count": 1, "text": "t", "user": {"screen_name": "u"}}')
+        self.assertEqual(row["created_at"].isoformat(), "2026-07-20T12:00:00+00:00")
+
+    def test_parse_error_is_recorded_and_next_account_still_runs(self):
+        responses = iter(["<html>" + '<script id="__NEXT_DATA__" type="application/json">{broken</script>', fixture("x_timeline_fresh_anthropicai.html")])
+        with mock.patch("sources.x.fetch", side_effect=lambda url, **kw: next(responses)):
+            res = x.collect({"per_source_cap": 8, "x": {"accounts": ["bad", "AnthropicAI"], "min_likes": 100, "stale_days": 7}},
+                            now=NOW, hours=24, sleep=lambda s: None)
+        self.assertIn("bad", res["notes"]["errors"])
+        self.assertEqual(len(res["items"]), 2)

@@ -4,7 +4,7 @@ import re
 import time
 import xml.etree.ElementTree as ET
 
-from .common import FetchError, assign_scores, candidate, fetch, hours_between, iso, parse_iso, result
+from .common import assign_scores, candidate, fetch, hours_between, iso, parse_iso, result
 
 RSS_URL = "https://www.reddit.com/r/{sub}/hot.rss?limit=10"
 NS = {"a": "http://www.w3.org/2005/Atom"}
@@ -36,8 +36,8 @@ def collect(config, now, hours, sleep=time.sleep):
         try:
             rows = parse_rss_xml(fetch(RSS_URL.format(sub=sub)))
             fetched_ok = True
-        except (FetchError, ET.ParseError) as e:
-            errors[sub] = str(e)
+        except Exception as e:  # FetchError, XML errors, anything: record and continue with the next subreddit
+            errors[sub] = str(e) or type(e).__name__
             continue
         for r in rows[:top_n]:
             published = parse_iso(r["published_at"]) if r["published_at"] else None

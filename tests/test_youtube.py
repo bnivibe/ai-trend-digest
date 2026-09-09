@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from unittest import mock
 
 from sources import youtube
+from sources.common import FetchError
 from tests.helpers import fixture
 
 NOW = datetime(2026, 9, 9, 22, 0, tzinfo=timezone.utc)
@@ -59,8 +60,22 @@ class Collect(unittest.TestCase):
                 self.assertRegex(c["published_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
 
     def test_fetch_errors_are_recorded_not_raised(self):
-        with mock.patch("sources.youtube.fetch", side_effect=youtube.FetchError("HTTP 429")):
+        with mock.patch("sources.youtube.fetch", side_effect=FetchError("HTTP 429")):
             res = youtube.collect(self.CONFIG, now=NOW, hours=24, sleep=lambda s: None)
         self.assertEqual(res["items"], [])
         self.assertFalse(res["fetched_ok"])
         self.assertIn("search:AI agents", res["notes"]["errors"])
+
+
+class Robustness(unittest.TestCase):
+    def test_search_parse_error_is_recorded_and_rss_still_runs(self):
+        def fake(url, **kw):
+            if "results?search_query" in url:
+                return "var ytInitialData = {broken};</script>"
+            return fixture("youtube_channel_rss_anthropic.xml")
+        with mock.patch("sources.youtube.fetch", side_effect=fake):
+            res = youtube.collect({"per_source_cap": 8, "youtube": {"queries": ["AI agents"], "channels": {"Anthropic": "x"}}},
+                                  now=datetime(2026, 9, 2, 0, 0, tzinfo=timezone.utc), hours=24, sleep=lambda s: None)
+        self.assertIn("search:AI agents", res["notes"]["errors"])
+        self.assertTrue(res["fetched_ok"])
+        self.assertTrue(any(c["author"] == "Anthropic" for c in res["items"]))

@@ -100,3 +100,14 @@ class Main(unittest.TestCase):
         printed = pr.call_args[0][0]
         self.assertIn("오늘은 수집 실패. only 3 candidates", printed)
         self.assertIn("[TEST] ⚠️ AI 트렌드", printed)
+
+
+class Budget(unittest.TestCase):
+    def test_total_chars_counts_embeds_only(self):
+        p = {"content": "x" * 1000, "embeds": [{"title": "ab", "description": "cde", "footer": {"text": "f"}}]}
+        self.assertEqual(post_discord.total_chars(p), 6)
+
+    def test_one_liner_length_checked(self):
+        d = digest()
+        d["one_liner"] = "가" * 121
+        self.assertTrue(any("one_liner over 120" in p for p in post_discord.validate(d)))

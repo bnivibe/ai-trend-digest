@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from unittest import mock
 
 from sources import github
+from sources.common import FetchError
 from tests.helpers import fixture
 
 NOW = datetime(2026, 9, 9, 6, 0, tzinfo=timezone.utc)
@@ -40,7 +41,7 @@ class Collect(unittest.TestCase):
         self.assertEqual(items[0]["engagement"]["stars_today"], max(c["engagement"]["stars_today"] for c in items))
 
     def test_fetch_error(self):
-        with mock.patch("sources.github.fetch", side_effect=github.FetchError("HTTP 503")):
+        with mock.patch("sources.github.fetch", side_effect=FetchError("HTTP 503")):
             res = github.collect(CONFIG, now=NOW, hours=24)
         self.assertEqual(res["items"], [])
         self.assertFalse(res["fetched_ok"])
