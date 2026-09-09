@@ -34,6 +34,7 @@ The webhook is read only from `AI_TREND_DISCORD_WEBHOOK`. Locally it lives in `~
 - Routine name: `AI Trend Digest (daily 07:00 Vancouver)`; message = `prompt/routine.md` verbatim; environment: Default Cloud Environment; model claude-sonnet-5.
 - Cron is UTC. `0 14 * * *` = 07:00 PDT. **After 2026-11-01 change it to `0 15 * * *`** (07:00 PST), and back on 2027-03-14.
 - The webhook must exist as the environment variable `AI_TREND_DISCORD_WEBHOOK` in the cloud environment.
+- **Cloud environment settings (network and variables):** claude.ai/code, click the environment chip left of "Select repository…" in the composer, open the **Cloud** submenu, hover the environment and click its gear icon. The form has **Network access** (None / Trusted / Full / Custom) and an **Environment variables** box in .env format. The default "Trusted" level blocks every source host with "Tunnel connection failed: 403 Forbidden" (verified 2026-09-09 on both environments), so the routine's environment needs **Custom** with these domains, or **Full**: `www.youtube.com`, `youtube.com`, `syndication.twitter.com`, `cdn.syndication.twimg.com`, `hn.algolia.com`, `github.com`, `www.reddit.com`, `reddit.com`, `discord.com`. Anthropic's note under the variables box says they are visible to anyone using the environment; on a personal account that is the owner alone, and a Discord webhook can be revoked in Discord at any time.
 - "Why did it not arrive": the local skill `/ai-trend-digest` reads the routine's run logs (RemoteTrigger `list_runs`, `get_run_log`). No message and no failure notice means the routine did not fire or could not reach Discord.
 
 ## Troubleshooting
@@ -43,6 +44,7 @@ The webhook is read only from `AI_TREND_DISCORD_WEBHOOK`. Locally it lives in `~
 - Reddit `HTTP 429`: rate limited per IP; calls are already spaced 3 s, and running `--probe` right before a collect triggers it. It clears on the next run.
 - Discord `HTTP 400`: the error body names the limit; `enforce_budget` should prevent it, so treat it as a bug and add a test.
 - YouTube search returns nothing in the cloud but works locally: datacenter IP treatment; keep the channel RSS path (it is plain XML) and open an issue.
+- Every source fails with `network: Tunnel connection failed: 403 Forbidden` in the cloud: the environment's network access is still "Trusted". Fix it in the environment settings (see Routine operations).
 
 ## Re-capturing fixtures
 
