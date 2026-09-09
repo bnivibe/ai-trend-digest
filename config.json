@@ -3,6 +3,7 @@
   "per_source_cap": 8,
   "min_candidates": 8,
   "min_sources_ok": 2,
+  "budget_seconds": 240,
   "youtube": {
     "queries": ["AI agents", "Claude Code", "MCP", "LLM", "AI coding", "new AI model"],
     "channels": {
@@ -18,7 +19,8 @@
     }
   },
   "x": {
-    "accounts": ["AnthropicAI", "ClaudeDevs", "OpenAI", "OpenAIDevs", "GoogleDeepMind", "karpathy", "simonw", "swyx", "bcherny", "huggingface", "arena", "cursor_ai", "ollama", "mistralai"],
+    "accounts": ["AnthropicAI", "ClaudeDevs", "OpenAI", "OpenAIDevs", "GoogleDeepMind", "arena", "cursor_ai", "ollama"],
+    "removed_as_stale_2026_09_09": ["karpathy", "simonw", "swyx", "bcherny", "huggingface", "mistralai"],
     "min_likes": 100,
     "stale_days": 7,
     "spacing_seconds": 1.5

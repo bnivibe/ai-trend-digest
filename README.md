@@ -9,7 +9,7 @@ Design: Google Drive `프로젝트/ai-trend-digest/2026-09-09-design.md`. This f
 2. Claude follows `prompt/digest.md` to cluster them into five topics in `out/digest.json`.
 3. `python3 post_discord.py out/digest.json` renders one webhook message with five embeds. `--failure "reason"` posts a failure notice instead. The channel is never silent.
 
-Standard library only, Python 3.9 compatible.
+Standard library only, Python 3.9 compatible. Sources run in parallel threads under a time budget (`budget_seconds` in config, default 240): a host that fails twice at the network level, or exhausts its retries on HTTP 429, is skipped for the rest of the run, and any fetch attempted after the deadline is skipped, so a blocked host costs under a minute instead of stalling the run.
 
 ## Run locally
 

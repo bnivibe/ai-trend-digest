@@ -69,3 +69,21 @@ class Main(unittest.TestCase):
                 data = json.load(f)
             self.assertEqual(len(data["candidates"]), 3)
             self.assertIn("verdict", data["meta"])
+
+
+class Parallel(unittest.TestCase):
+    def test_sources_run_concurrently_and_keep_order(self):
+        import time as _t
+
+        def slow(config, now, hours):
+            _t.sleep(0.3)
+            return result(_items(2, "s"), True)
+
+        srcs = {"a": SimpleNamespace(collect=slow), "b": SimpleNamespace(collect=slow),
+                "c": SimpleNamespace(collect=slow), "d": SimpleNamespace(collect=slow)}
+        t0 = _t.time()
+        data = collect.run(CONFIG, 24, now=NOW, sources=srcs, budget=60)
+        self.assertLess(_t.time() - t0, 0.9)
+        self.assertEqual(list(data["meta"]["sources"]), ["a", "b", "c", "d"])
+        self.assertEqual(data["meta"]["candidates"], 8)
+        self.assertEqual(data["meta"]["budget_seconds"], 60)

@@ -1,8 +1,10 @@
 """Shared helpers for all sources: HTTP fetch, time parsing, counting, scoring, candidate shape."""
 import gzip
 import re
+import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
@@ -10,6 +12,38 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0 Safari/537.36")
 RETRY_STATUS = (429, 500, 502, 503, 504)
 BACKOFF = (2, 4, 8)
+NETWORK_ATTEMPTS = 2      # attempts on network-level errors (DNS, refused, timeouts); HTTP 429/5xx get `retries`
+DEAD_AFTER_FAILURES = 2   # network failures on a host before the rest of its URLs are skipped this run
+
+_LOCK = threading.Lock()
+_HOST_FAILURES = {}
+_DEADLINE = [None]
+
+
+def reset_run(deadline=None):
+    """Call once per run: forget dead hosts and set the time budget (epoch seconds, or None for no budget)."""
+    with _LOCK:
+        _HOST_FAILURES.clear()
+    _DEADLINE[0] = deadline
+
+
+def _host(url):
+    return urllib.parse.urlsplit(url).hostname or url
+
+
+def _note_network_failure(host):
+    with _LOCK:
+        _HOST_FAILURES[host] = _HOST_FAILURES.get(host, 0) + 1
+
+
+def _mark_host_dead(host):
+    with _LOCK:
+        _HOST_FAILURES[host] = DEAD_AFTER_FAILURES
+
+
+def _host_is_dead(host):
+    with _LOCK:
+        return _HOST_FAILURES.get(host, 0) >= DEAD_AFTER_FAILURES
 
 
 class FetchError(Exception):
@@ -21,8 +55,13 @@ def fetch(url, timeout=20, retries=3, headers=None, sleep=time.sleep):
     hdrs = {"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9", "Accept-Encoding": "gzip"}
     if headers:
         hdrs.update(headers)
+    host = _host(url)
+    if _host_is_dead(host):
+        raise FetchError("skipped: %s unreachable earlier this run" % host)
     reason = "unknown"
     for attempt in range(retries):
+        if _DEADLINE[0] is not None and time.time() > _DEADLINE[0]:
+            raise FetchError("skipped: time budget exhausted")
         req = urllib.request.Request(url, headers=hdrs)
         wait = BACKOFF[min(attempt, len(BACKOFF) - 1)]
         try:
@@ -35,11 +74,16 @@ def fetch(url, timeout=20, retries=3, headers=None, sleep=time.sleep):
             reason = "HTTP %d" % e.code
             if e.code not in RETRY_STATUS:
                 raise FetchError(reason)
+            if e.code == 429 and attempt == retries - 1:
+                _mark_host_dead(host)  # a rate limit is host-wide: stop hammering it for the rest of the run
             retry_after = e.headers.get("Retry-After") if e.headers else None
             if retry_after and str(retry_after).isdigit():
                 wait = max(wait, min(int(retry_after), 30))
         except (urllib.error.URLError, OSError) as e:
             reason = "network: %s" % getattr(e, "reason", e)
+            if attempt + 1 >= NETWORK_ATTEMPTS:  # give up on network errors sooner than on HTTP errors
+                _note_network_failure(host)
+                raise FetchError(reason)
         if attempt < retries - 1:
             sleep(wait)
     raise FetchError(reason)
