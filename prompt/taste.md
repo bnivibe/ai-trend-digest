@@ -9,6 +9,7 @@ What the owner reads to the end. `prompt/digest.md` uses this file when choosing
 - Career framing for the AI era from people inside big tech: what separates the top 1%, taste as the moat, learning where the model fails.
 - Korean explainers that track one English primary source (a spec change, an Anthropic engineering post, a Simon Willison or Karpathy piece) and say what it changes in day-to-day work. The value is the reading of the source, not the news itself.
 - Claude Code ecosystem internals: MCP spec changes, Skills and how to test them (LLM as a judge, lifecycle, retiring a skill), context management (compact, clear, subagents, rewind), token budgets.
+- The cost mechanics of agent harnesses: prompt caching and KV cache behaviour, what breaks the cache (tool definitions, idle TTL, pruning history), token budgets, and who profits from a cache miss.
 - Language is not a filter. Korean-language practitioner content counts as much as English.
 
 ## Entries
@@ -25,3 +26,5 @@ What the owner reads to the end. `prompt/digest.md` uses this file when choosing
    Why: a structured reading of a Karpathy interview: Software 1.0 to 3.0, jagged intelligence (genius only where grading is possible), vibe coding versus agentic engineering, what humans must still do better, thinking can be outsourced but understanding cannot.
 6. 2026-09-01 · YouTube · 김플립 - LLM 코딩 · 죽어가던 MCP 심폐소생 시작됐나? Stateless에 주목해야 할 이유 · https://youtu.be/3C-JE5vcrsg
    Why: reads the 2026-07-28 MCP spec change (stateless, request-response like REST) through Simon Willison's post: why held connections were the problem, serverless economics, no backward compatibility, and the answer to "isn't it just an API wrapper".
+7. 2026-07-24 · LinkedIn · Jeongmin Lee (jyoung105) · 코딩 에이전트 비용을 줄이고 싶다면, prompt caching 구조를 알아야 합니다 · https://www.linkedin.com/posts/jyoung105_activity-7486263712614555648-4f7a
+   Why: a Korean reading of Armin Ronacher's post on how the Pi coding agent uses prompt caching, cut to five points: changing one tool definition invalidates the whole cache, the 5-minute TTL, one cache miss is the most expensive event in a session, pruning history costs more than it saves, and gateways earn more on misses. Agentic mechanics plus cost, from a primary source.
