@@ -7,6 +7,8 @@ What the owner reads to the end. `prompt/digest.md` uses this file when choosing
 - First-person accounts from practising engineers about how they actually work with agents: the exact prompts, what failed, what they changed. Method over product news.
 - The mechanics of agentic work: what context to feed, how to verify (AI judges, evals, mock reviewers), how to structure iteration (scaffolding, harnesses, token budgets).
 - Career framing for the AI era from people inside big tech: what separates the top 1%, taste as the moat, learning where the model fails.
+- Korean explainers that track one English primary source (a spec change, an Anthropic engineering post, a Simon Willison or Karpathy piece) and say what it changes in day-to-day work. The value is the reading of the source, not the news itself.
+- Claude Code ecosystem internals: MCP spec changes, Skills and how to test them (LLM as a judge, lifecycle, retiring a skill), context management (compact, clear, subagents, rewind), token budgets.
 - Language is not a filter. Korean-language practitioner content counts as much as English.
 
 ## Entries
@@ -15,3 +17,11 @@ What the owner reads to the end. `prompt/digest.md` uses this file when choosing
    Why: a Meta senior engineer replays a hackathon he cleared with agents (60 of 5,300 entrants), prompts shown verbatim. Three questions in order: what to feed (context), how to grade (verification), how to iterate (scaffolding). He built an AI judge and had it review the entry seven times before submitting.
 2. 2026-08-15 · YouTube · 실밸개발자 · AI 시대, 메타 엔지니어는 이렇게 일합니다 (커리어 팁 12가지) · https://youtu.be/H3oGKM-pM_Q
    Why: twelve career tips after a year of Claude Code inside Meta. Agentic engineering defined as prompt, context, harness, tokens, evals; learn where AI fails and recalibrate per model; taste as the moat; the 10x to 20x gap already visible inside the company.
+3. 2026-03-26 · YouTube · 김플립 - LLM 코딩 · 99%는 프롬프트를 쓰고, 상위 1%는 Skills를 만듭니다 · https://youtu.be/GXE7qn8qMrQ
+   Why: Skills as software written in natural language; the difference is in testing (three situations plus LLM as a judge), lifecycle and retiring skills, built on Anthropic's agent-skills engineering post.
+4. 2026-04-25 · YouTube · 김플립 - LLM 코딩 · 100만 토큰시대! 앤트로픽이 알려준 클로드코드 컨텍스트 관리법 · https://youtu.be/NpfBwijf0-Y
+   Why: the 1M-context trap; four symptoms of a degraded session; how to use compact and clear properly; periodic reminders; subagents and rewind. Practical mechanics from Anthropic's own guidance.
+5. 2026-05-04 · YouTube · 김플립 - LLM 코딩 · 꼭 알아야할 안드레 카파시 30분 인터뷰 완전정리 · https://youtu.be/UNnsS03whx0
+   Why: a structured reading of a Karpathy interview: Software 1.0 to 3.0, jagged intelligence (genius only where grading is possible), vibe coding versus agentic engineering, what humans must still do better, thinking can be outsourced but understanding cannot.
+6. 2026-09-01 · YouTube · 김플립 - LLM 코딩 · 죽어가던 MCP 심폐소생 시작됐나? Stateless에 주목해야 할 이유 · https://youtu.be/3C-JE5vcrsg
+   Why: reads the 2026-07-28 MCP spec change (stateless, request-response like REST) through Simon Willison's post: why held connections were the problem, serverless economics, no backward compatibility, and the answer to "isn't it just an API wrapper".
