@@ -89,5 +89,5 @@ class Robustness(unittest.TestCase):
                "channels": {"A": "1", "B": "2", "C": "3"}}}
         with mock.patch("sources.youtube.fetch", side_effect=fake):
             res = youtube.collect(cfg, now=NOW, hours=24, sleep=lambda s: None)
-        self.assertEqual(res["notes"]["errors"], {"rss": "HTTP 404 (all 3 channels)"})
+        self.assertEqual(res["notes"]["errors"], {"rss": "HTTP 404 (3 of 3 channels)"})
         self.assertEqual(res["items"][0]["source"], "youtube")
