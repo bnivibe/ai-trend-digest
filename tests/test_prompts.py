@@ -15,7 +15,7 @@ class Taste(unittest.TestCase):
         body = read("taste.md").split("## Entries", 1)[1]
         entries = re.findall(r"^\d+\. (\d{4}-\d\d-\d\d) · ", body, re.M)
         self.assertTrue(1 <= len(entries) <= 20, "taste.md holds 1 to 20 entries")
-        self.assertEqual(entries, sorted(entries), "newest entry last")
+        # entries are ordered by when the owner added them, not by publish date, so no sort check
         self.assertEqual(len(re.findall(r"^\s+Why: ", body, re.M)), len(entries), "every entry has a Why line")
 
     def test_digest_prompt_reads_taste(self):
