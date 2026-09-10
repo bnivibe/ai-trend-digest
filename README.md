@@ -46,6 +46,18 @@ The webhook is read only from `AI_TREND_DISCORD_WEBHOOK`. Locally it lives in `~
 - YouTube search returns nothing in the cloud but works locally: datacenter IP treatment; keep the channel RSS path (it is plain XML) and open an issue.
 - Every source fails with `network: Tunnel connection failed: 403 Forbidden` in the cloud: the environment's network access is still "Trusted". Fix it in the environment settings (see Routine operations).
 
+### What the cloud cannot reach, by design (measured 2026-09-10)
+
+With network access set to Custom, three source paths still fail in the sandbox and are expected to:
+
+| Path | Result | Why, and what covers it |
+|---|---|---|
+| YouTube channel RSS | HTTP 404 on every channel | YouTube serves the feeds endpoint only to residential addresses; plain curl in the sandbox reproduces it. The search page works, so the YouTube source still fills up. |
+| X timeline (syndication.twitter.com) | HTTP 429 | The shared datacenter address is rate limited. `cdn.syndication.twimg.com/tweet-result` still returns 200, so X reaches the digest through the WebSearch step in `prompt/digest.md`, which looks up tweets by id. |
+| GitHub trending | HTTP 403 with "sessions are bound to their configured repositories" | The sandbox proxies github.com for the git integration and allows only the checked-out repository. There is no way around it from inside; GitHub contributes on the laptop only. |
+
+So a healthy cloud run is three sources ok (YouTube, Hacker News, Reddit) plus X through the digest step, and the footer names the other two. On the laptop all five work.
+
 ## Re-capturing fixtures
 
 ```bash

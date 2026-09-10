@@ -79,3 +79,15 @@ class Robustness(unittest.TestCase):
         self.assertIn("search:AI agents", res["notes"]["errors"])
         self.assertTrue(res["fetched_ok"])
         self.assertTrue(any(c["author"] == "Anthropic" for c in res["items"]))
+
+    def test_identical_rss_failures_collapse_to_one_line(self):
+        def fake(url, **kw):
+            if "results?search_query" in url:
+                return fixture("youtube_search_today_en.html")
+            raise FetchError("HTTP 404")
+        cfg = {"per_source_cap": 8, "youtube": {"queries": ["AI agents"],
+               "channels": {"A": "1", "B": "2", "C": "3"}}}
+        with mock.patch("sources.youtube.fetch", side_effect=fake):
+            res = youtube.collect(cfg, now=NOW, hours=24, sleep=lambda s: None)
+        self.assertEqual(res["notes"]["errors"], {"rss": "HTTP 404 (all 3 channels)"})
+        self.assertEqual(res["items"][0]["source"], "youtube")
