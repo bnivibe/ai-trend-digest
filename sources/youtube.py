@@ -101,6 +101,13 @@ def collect(config, now, hours, sleep=time.sleep):
             fetched_ok = True
         except Exception as e:
             errors["rss:" + name] = str(e) or type(e).__name__
+    rss_errors = {k: v for k, v in errors.items() if k.startswith("rss:")}
+    if len(rss_errors) > 1 and len(set(rss_errors.values())) == 1:
+        # every channel feed failed the same way (the cloud sandbox gets HTTP 404 from YouTube):
+        # one line keeps the daily footer readable
+        for k in rss_errors:
+            del errors[k]
+        errors["rss"] = "%s (all %d channels)" % (next(iter(rss_errors.values())), len(rss_errors))
     by_id = {}
     for raw in raws:  # RSS rows carry exact timestamps; prefer them over search rows for the same video
         prev = by_id.get(raw["video_id"])

@@ -47,7 +47,23 @@ def _host_is_dead(host):
 
 
 class FetchError(Exception):
-    """Raised after retries are exhausted. str(e) is a short reason like 'HTTP 429'."""
+    """Raised after retries are exhausted. str(e) is a short reason like 'HTTP 429',
+    with a brief server explanation appended when one is available."""
+
+
+def _hint(e):
+    """A short, safe explanation from an error body, or ''. Keeps daily footers readable."""
+    try:
+        body = e.read(400).decode("utf-8", "replace")
+    except Exception:
+        return ""
+    m = re.search(r'"message"\s*:\s*"([^"]{5,160})"', body)
+    if m:
+        return " (%s)" % m.group(1).strip()
+    if "<html" in body[:200].lower():
+        return ""
+    text = re.sub(r"\s+", " ", body).strip()
+    return " (%s)" % text[:120] if text else ""
 
 
 def fetch(url, timeout=20, retries=3, headers=None, sleep=time.sleep):
@@ -73,7 +89,7 @@ def fetch(url, timeout=20, retries=3, headers=None, sleep=time.sleep):
         except urllib.error.HTTPError as e:
             reason = "HTTP %d" % e.code
             if e.code not in RETRY_STATUS:
-                raise FetchError(reason)
+                raise FetchError(reason + _hint(e))
             if e.code == 429 and attempt == retries - 1:
                 _mark_host_dead(host)  # a rate limit is host-wide: stop hammering it for the rest of the run
             retry_after = e.headers.get("Retry-After") if e.headers else None

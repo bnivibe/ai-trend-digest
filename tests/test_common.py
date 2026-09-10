@@ -142,3 +142,19 @@ class CircuitAndBudget(unittest.TestCase):
                 common.fetch("http://limited.example/b", sleep=lambda s: None)
         self.assertEqual(urlopen.call_count, 3)
         self.assertIn("unreachable earlier this run", str(ctx.exception))
+
+    def test_non_retryable_error_carries_server_message(self):
+        err = urllib.error.HTTPError("http://x", 403, "forbidden", {},
+                                     io.BytesIO(b'{"message":"This GitHub API path is not available: sessions are bound to their configured repositories."}'))
+        with mock.patch("sources.common.urllib.request.urlopen", side_effect=[err]):
+            with self.assertRaises(common.FetchError) as ctx:
+                common.fetch("http://x", sleep=lambda s: None)
+        self.assertIn("HTTP 403", str(ctx.exception))
+        self.assertIn("sessions are bound", str(ctx.exception))
+
+    def test_html_error_body_adds_no_noise(self):
+        err = urllib.error.HTTPError("http://x", 404, "nf", {}, io.BytesIO(b"<!DOCTYPE html><html lang=en><title>Error 404</title>"))
+        with mock.patch("sources.common.urllib.request.urlopen", side_effect=[err]):
+            with self.assertRaises(common.FetchError) as ctx:
+                common.fetch("http://x", sleep=lambda s: None)
+        self.assertEqual(str(ctx.exception), "HTTP 404")
