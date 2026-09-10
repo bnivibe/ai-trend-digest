@@ -7,6 +7,7 @@ You are turning `out/candidates.json` into `out/digest.json`. Read this whole fi
 - `out/candidates.json` = `{"meta": {...}, "candidates": [...]}`. Each candidate has `source` (youtube | x | hn | github | reddit), `id`, `url`, `title`, `author`, `published_at`, `age_hours`, `engagement` (`views` | `likes` | `points` | `stars_today` | `rank`), `score` (rank percentile inside its source, 1.0 is best) and `snippet`.
 - `meta.verdict`: when it starts with `insufficient`, do not write a digest. Follow the failure path in `prompt/routine.md`.
 - `meta.sources.x.stale`: X accounts whose cached timeline is old. They contributed nothing. Never mention them in the digest.
+- `prompt/taste.md`: what the owner reads to the end, with the pattern behind it. Used in step 2.
 
 ## What "hot" means, in this order
 
@@ -17,7 +18,7 @@ You are turning `out/candidates.json` into `out/digest.json`. Read this whole fi
 ## Procedure
 
 1. Read every candidate. Group them by the underlying event or subject, not by source. A group may hold a single candidate.
-2. Rank the groups by the rules above and take the top five. If fewer than five are viable, take three or four and explain why in `stats.note`. Never pad with weak items.
+2. Read `prompt/taste.md`, then rank the groups by the rules above and take the top five. Taste works like this: rule 1 (cross-source appearance) still comes first; among groups that pass rule 3, a group that matches the taste pattern (practitioner method, agentic mechanics, career framing from inside big tech) beats a group with higher engagement that does not, and it may take one of the five slots even from a single source. Never invent a match: the candidate's title or snippet must show the pattern. If fewer than five groups are viable, take three or four and explain why in `stats.note`. Never pad with weak items.
 3. X coverage. Run this whenever the WebSearch tool is available to you; it is the main X path, not a bonus. The collector's X source usually returns nothing when it runs in the cloud, because the timeline endpoint rate-limits shared datacenter addresses with HTTP 429, while the single-tweet endpoint keeps working. For each chosen topic run one WebSearch with `allowed_domains: ["x.com"]` and the topic's key terms. For each result whose URL matches `x.com/<handle>/status/<id>` and is clearly about the topic, run `python3 -m sources.x tweet <id>`. Add it as a source line for that topic when the printed candidate has `age_hours` at most 48 and `likes` at least 100. At most one tweet per topic. If WebSearch is unavailable or errors, skip the step silently and never mention it in the digest.
 4. Write `out/digest.json` in the schema below.
 5. Run `python3 post_discord.py --validate out/digest.json`. Fix every problem it reports and validate again until it prints `digest ok`.
