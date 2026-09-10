@@ -13,7 +13,8 @@
       "AI coding",
       "new AI model",
       "에이전틱 엔지니어링",
-      "AI 에이전트 개발자"
+      "AI 에이전트 개발자",
+      "클로드 코드"
     ],
     "channels": {
       "Anthropic": "UCrDwWp7EBBv4NwvScIpBDOA",
@@ -25,7 +26,8 @@
       "Matthew Berman": "UCawZsQWqfGSbCI5yjkdVkTA",
       "Theo - t3.gg": "UCbRP3c757lWg9M-U7TyEkXA",
       "AI Engineer": "UCLKPca3kwwd-B59HNr-_lvA",
-      "실밸개발자": "UC6VbqOLKkdDhdtnhuTYPKxA"
+      "실밸개발자": "UC6VbqOLKkdDhdtnhuTYPKxA",
+      "김플립 - LLM 코딩": "UCN9T0v5XMOhMgYunUAtVvwQ"
     }
   },
   "x": {
@@ -60,7 +62,8 @@
       "Gemini",
       "agent",
       "OpenAI",
-      "Anthropic"
+      "Anthropic",
+      "MCP"
     ],
     "min_points": 50
   },
