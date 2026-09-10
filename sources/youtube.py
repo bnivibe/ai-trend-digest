@@ -107,7 +107,7 @@ def collect(config, now, hours, sleep=time.sleep):
         # one line keeps the daily footer readable
         for k in rss_errors:
             del errors[k]
-        errors["rss"] = "%s (all %d channels)" % (next(iter(rss_errors.values())), len(rss_errors))
+        errors["rss"] = "%s (%d of %d channels)" % (next(iter(rss_errors.values())), len(rss_errors), len(cfg.get("channels", {})))
     by_id = {}
     for raw in raws:  # RSS rows carry exact timestamps; prefer them over search rows for the same video
         prev = by_id.get(raw["video_id"])
