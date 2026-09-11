@@ -6,7 +6,7 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 from datetime import timedelta
 
-from .common import (assign_scores, candidate, fetch, hours_between, iso,
+from .common import (FetchError, assign_scores, candidate, fetch, hours_between, iso,
                      parse_count, parse_iso, relative_age_hours, result)
 
 # sp=EgIIAg%3D%3D is the "upload date: today" filter; hl/gl pin the English locale so ages read "9h ago".
@@ -69,6 +69,18 @@ def parse_rss_xml(xml_text):
     return items
 
 
+def _fetch_rss(cid, sleep):
+    """Channel feeds answer an intermittent HTTP 404 from datacenter addresses (seen on 3 to 5 of
+    11 channels per cloud run, different ones each time); one retry after a short pause recovers most."""
+    try:
+        return fetch(RSS_URL.format(cid=cid))
+    except FetchError as e:
+        if str(e) != "HTTP 404":
+            raise
+        sleep(3)
+        return fetch(RSS_URL.format(cid=cid))
+
+
 def _to_candidate(raw, now, hours):
     """A candidate when the video is inside the window, else None."""
     if raw.get("published_at"):
@@ -97,7 +109,7 @@ def collect(config, now, hours, sleep=time.sleep):
         sleep(1)
     for name, cid in cfg.get("channels", {}).items():
         try:
-            raws.extend(parse_rss_xml(fetch(RSS_URL.format(cid=cid))))
+            raws.extend(parse_rss_xml(_fetch_rss(cid, sleep)))
             fetched_ok = True
         except Exception as e:
             errors["rss:" + name] = str(e) or type(e).__name__

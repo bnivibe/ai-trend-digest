@@ -4,6 +4,14 @@
   "min_candidates": 8,
   "min_sources_ok": 2,
   "budget_seconds": 240,
+  "max_per_list": {
+    "youtube.queries": 10,
+    "youtube.channels": 12,
+    "x.accounts": 10,
+    "hn.keywords": 10,
+    "github.keywords": 12,
+    "reddit.subreddits": 4
+  },
   "youtube": {
     "queries": [
       "AI agents",
