@@ -40,7 +40,7 @@ Skipped sources are listed in `meta.skipped` and do not count toward `sources_to
 
 ## Configuration
 
-`config.json` is the only file to edit: YouTube queries and channel ids, X accounts, HN keywords and minimum points, GitHub keywords, subreddits, window (`hours`), caps and thresholds. **Every keyword list has a maximum in `max_per_list`** (queries 10, channels 12, X accounts 10, HN keywords 10, GitHub keywords 12, subreddits 4) and `tests/test_config.py` fails a PR that exceeds it: to add one past the cap, remove one first. Channel ids resolve from a YouTube channel-filtered search (`results?search_query=<name>&sp=EgIQAg%3D%3D`) by reading `channelRenderer.channelId`.
+`config.json` is the only file to edit: YouTube queries and channel ids, X accounts, HN keywords and minimum points, GitHub keywords, subreddits, window (`hours`), caps and thresholds. **Every keyword list has a maximum in `max_per_list`** (queries 20, channels 20, X accounts 15, HN keywords 15, GitHub keywords 20, subreddits 6; raised 2026-09-11 for more variety, the collector stays inside its 240 s budget because sources run in parallel) and `tests/test_config.py` fails a PR that exceeds it: to add one past the cap, remove one first. Channel ids resolve from a YouTube channel-filtered search (`results?search_query=<name>&sp=EgIQAg%3D%3D`) by reading `channelRenderer.channelId`.
 
 ## Routine operations
 
