@@ -14,7 +14,8 @@
       "new AI model",
       "에이전틱 엔지니어링",
       "AI 에이전트 개발자",
-      "클로드 코드"
+      "클로드 코드",
+      "agent harness"
     ],
     "channels": {
       "Anthropic": "UCrDwWp7EBBv4NwvScIpBDOA",
@@ -63,7 +64,8 @@
       "agent",
       "OpenAI",
       "Anthropic",
-      "MCP"
+      "MCP",
+      "harness"
     ],
     "min_points": 50
   },
@@ -79,7 +81,8 @@
       "rag",
       "inference",
       "transformer",
-      "diffusion"
+      "diffusion",
+      "harness"
     ]
   },
   "reddit": {

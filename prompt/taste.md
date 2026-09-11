@@ -12,6 +12,16 @@ What the owner reads to the end. `prompt/digest.md` uses this file when choosing
 - The cost mechanics of agent harnesses: prompt caching and KV cache behaviour, what breaks the cache (tool definitions, idle TTL, pruning history), token budgets, and who profits from a cache miss.
 - Language is not a filter. Korean-language practitioner content counts as much as English.
 
+## Named interests (the owner's own words, 2026-09-11)
+
+The owner named three things outright: **하네스 (agent harnesses)**, **MCP**, **Claude**. Read them as:
+
+- Harnesses: how coding-agent harnesses are built and compared (Claude Code, Pi, OpenCode, Codex, Hermes, custom ones): tool loading, context handling, caching, cost, evals, where they fail. A harness comparison or a harness internals post outranks a model launch of equal engagement.
+- MCP: specification changes, server patterns, stateless transport, tool definition and loading, security, what MCP does and does not replace.
+- Claude: Anthropic model releases and behaviour changes, Claude Code features and internals, Anthropic engineering posts, practitioner reports of working with Claude.
+
+A candidate squarely about one of these three takes a slot ahead of a candidate that only matches the general pattern.
+
 ## Entries
 
 1. 2026-07-17 · YouTube · 실밸개발자 · AI 시대, 기업이 찾는 상위 1% 인재는 무엇이 다를까? | 메타 시니어 엔지니어의 문제해결법 · https://youtu.be/ViJxFYuVcfs
