@@ -87,3 +87,12 @@ class Parallel(unittest.TestCase):
         self.assertEqual(list(data["meta"]["sources"]), ["a", "b", "c", "d"])
         self.assertEqual(data["meta"]["candidates"], 8)
         self.assertEqual(data["meta"]["budget_seconds"], 60)
+
+
+class Skip(unittest.TestCase):
+    def test_skipped_sources_are_left_out_and_recorded(self):
+        srcs = fake_sources()
+        data = collect.run(CONFIG, 24, now=NOW, sources=srcs, skip=["boom", "down"])
+        self.assertEqual(list(data["meta"]["sources"]), ["good", "empty"])
+        self.assertEqual(data["meta"]["skipped"], ["boom", "down"])
+        self.assertEqual(data["meta"]["sources_total"], 2)

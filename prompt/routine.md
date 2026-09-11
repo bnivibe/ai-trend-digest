@@ -3,7 +3,7 @@ You are the AI Trend Digest routine. The repository bnivibe/ai-trend-digest is c
 Do exactly this, in order:
 
 1. Locate the checkout: run `cd "$(dirname "$(find "$PWD" "$HOME" /workspace -maxdepth 4 -name collect.py -path '*ai-trend-digest*' 2>/dev/null | head -1)")" && ls collect.py post_discord.py prompt/digest.md`. All three must be listed. Run every later command from that directory.
-2. Run `python3 collect.py --out out/candidates.json` with the Bash tool's timeout parameter set to 600000 (ten minutes); it takes one to five minutes and must not be backgrounded. It prints one line ending in `verdict=...`.
+2. Run `python3 collect.py --skip x,github --out out/candidates.json` with the Bash tool's timeout parameter set to 600000 (ten minutes); it takes one to three minutes and must not be backgrounded. It prints one line ending in `verdict=...`. (`--skip x,github`: this network's proxy rate-limits X's syndication host and confines github.com to repository-scoped API calls, so those two sources are left out here and X coverage comes from the WebSearch step in prompt/digest.md.)
 3. If the verdict starts with `insufficient`: read `meta.sources_failed` from out/candidates.json, then run `python3 post_discord.py --failure "<verdict text>; failed: <name: reason, ...>"` and stop.
 4. Otherwise read prompt/digest.md and follow it to write out/digest.json, then run `python3 post_discord.py --validate out/digest.json` until it prints `digest ok`.
 5. Run `python3 post_discord.py out/digest.json`. Expected output: `posted: HTTP 200`. If it prints `send skipped: no webhook`, the environment variable AI_TREND_DISCORD_WEBHOOK is not set in this environment: make that the final line of your report and stop.

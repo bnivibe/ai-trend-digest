@@ -5,6 +5,7 @@
   python3 collect.py --dry-run            # print the top candidates per source, write nothing
   python3 collect.py --probe              # one GET per host, print reachability, exit 1 if discord.com is blocked
   python3 collect.py --only youtube,hn    # subset of sources
+  python3 collect.py --skip x,github      # everything except these (the cloud routine uses this)
   python3 collect.py --budget 240         # seconds; fetches past the deadline are skipped (default from config)
 
 Sources run in parallel threads (one per source; calls inside a source stay sequential and spaced).
@@ -65,14 +66,16 @@ def _run_one(mod, config, now, hours):
                 "error": "%s: %s" % (type(e).__name__, e)}, []
 
 
-def run(config, hours, only=None, now=None, sources=None, budget=None):
+def run(config, hours, only=None, now=None, sources=None, budget=None, skip=None):
     """Run every source in parallel and in isolation; one failure never aborts the run.
-    budget: seconds for the whole collection; fetches attempted after the deadline are skipped."""
+    budget: seconds for the whole collection; fetches attempted after the deadline are skipped.
+    skip: source names left out entirely (they do not count in sources_total)."""
     now = now or now_utc()
     sources = sources if sources is not None else SOURCES
-    selected = [(n, m) for n, m in sources.items() if not only or n in only]
+    skip = set(skip or [])
+    selected = [(n, m) for n, m in sources.items() if (not only or n in only) and n not in skip]
     common.reset_run(time.time() + budget if budget else None)
-    meta = {"run_at": iso(now), "hours": hours, "budget_seconds": budget, "sources": {}}
+    meta = {"run_at": iso(now), "hours": hours, "budget_seconds": budget, "skipped": sorted(skip), "sources": {}}
     candidates = []
     with ThreadPoolExecutor(max_workers=max(1, len(selected))) as pool:
         futures = [(name, pool.submit(_run_one, mod, config, now, hours)) for name, mod in selected]
@@ -106,6 +109,7 @@ def main(argv=None):
     p.add_argument("--hours", type=float)
     p.add_argument("--out", default="out/candidates.json")
     p.add_argument("--only")
+    p.add_argument("--skip", help="comma-separated sources to leave out, e.g. x,github on networks that block them")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--probe", action="store_true")
     p.add_argument("--budget", type=float, help="seconds for the whole collection (default: config budget_seconds, 240)")
@@ -116,7 +120,8 @@ def main(argv=None):
     hours = a.hours or config.get("hours", 24)
     budget = a.budget or config.get("budget_seconds", 240)
     t0 = time.time()
-    data = run(config, hours, only=a.only.split(",") if a.only else None, budget=budget)
+    data = run(config, hours, only=a.only.split(",") if a.only else None, budget=budget,
+               skip=a.skip.split(",") if a.skip else None)
     data["meta"]["elapsed_seconds"] = round(time.time() - t0, 1)
     if a.dry_run:
         for name, info in data["meta"]["sources"].items():

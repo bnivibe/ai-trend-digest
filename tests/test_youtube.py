@@ -91,3 +91,27 @@ class Robustness(unittest.TestCase):
             res = youtube.collect(cfg, now=NOW, hours=24, sleep=lambda s: None)
         self.assertEqual(res["notes"]["errors"], {"rss": "HTTP 404 (3 of 3 channels)"})
         self.assertEqual(res["items"][0]["source"], "youtube")
+
+
+class RssRetry(unittest.TestCase):
+    def test_404_is_retried_once_after_a_pause(self):
+        calls = iter([FetchError("HTTP 404"), fixture("youtube_channel_rss_anthropic.xml")])
+
+        def fake(url, **kw):
+            v = next(calls)
+            if isinstance(v, Exception):
+                raise v
+            return v
+        sleeps = []
+        with mock.patch("sources.youtube.fetch", side_effect=fake):
+            res = youtube.collect({"per_source_cap": 8, "youtube": {"queries": [], "channels": {"Anthropic": "x"}}},
+                                  now=datetime(2026, 9, 2, 0, 0, tzinfo=timezone.utc), hours=24, sleep=sleeps.append)
+        self.assertEqual(sleeps, [3])
+        self.assertTrue(res["fetched_ok"])
+        self.assertNotIn("rss", res["notes"]["errors"])
+
+    def test_second_404_is_recorded(self):
+        with mock.patch("sources.youtube.fetch", side_effect=FetchError("HTTP 404")):
+            res = youtube.collect({"per_source_cap": 8, "youtube": {"queries": [], "channels": {"Anthropic": "x"}}},
+                                  now=NOW, hours=24, sleep=lambda s: None)
+        self.assertEqual(res["notes"]["errors"], {"rss:Anthropic": "HTTP 404"})
