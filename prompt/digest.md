@@ -7,6 +7,7 @@ You are turning `out/candidates.json` into `out/digest.json`. Read this whole fi
 - `out/candidates.json` = `{"meta": {...}, "candidates": [...]}`. Each candidate has `source` (youtube | x | hn | github | reddit), `id`, `url`, `title`, `author`, `published_at`, `age_hours`, `engagement` (`views` | `likes` | `points` | `stars_today` | `rank`), `score` (rank percentile inside its source, 1.0 is best) and `snippet`.
 - `meta.verdict`: when it starts with `insufficient`, do not write a digest. Follow the failure path in `prompt/routine.md`.
 - `meta.sources.x.stale`: X accounts whose cached timeline is old. They contributed nothing. Never mention them in the digest.
+- `meta.skipped`: sources left out on purpose for this network (the cloud routine runs `--skip x,github`). Not failures; never list them as failed, and treat step 3 as required when `x` is there.
 - `prompt/taste.md`: what the owner reads to the end, with the pattern behind it. Used in step 2.
 
 ## What "hot" means, in this order

@@ -25,9 +25,22 @@ python3 post_discord.py --validate out/digest.json
 
 The webhook is read only from `AI_TREND_DISCORD_WEBHOOK`. Locally it lives in `~/.claude/secrets.env` (`export AI_TREND_DISCORD_WEBHOOK=...`). Never put it in a file in this repository.
 
+## Where each source works
+
+| Source | Laptop | Cloud routine | Why |
+|---|---|---|---|
+| YouTube search | yes | yes | plain HTML |
+| YouTube channel RSS | yes | mostly (intermittent 404, retried once) | datacenter address treatment |
+| Hacker News | yes | yes | public API |
+| Reddit RSS | yes | yes | one call per subreddit, 3 s apart |
+| X syndication | yes (rate-limits after repeated testing) | no: HTTP 429 on the first call, the sandbox's egress address is already limited | the routine runs `--skip x`; X coverage comes from the WebSearch step in `prompt/digest.md` |
+| GitHub trending | yes | no: the sandbox proxies github.com as a repository-scoped API and answers 403 for the trending page | the routine runs `--skip github` |
+
+Skipped sources are listed in `meta.skipped` and do not count toward `sources_total`.
+
 ## Configuration
 
-`config.json` is the only file to edit: YouTube queries and channel ids, X accounts, HN keywords and minimum points, GitHub keywords, subreddits, window (`hours`), caps and thresholds. Channel ids resolve from a YouTube channel-filtered search (`results?search_query=<name>&sp=EgIQAg%3D%3D`) by reading `channelRenderer.channelId`.
+`config.json` is the only file to edit: YouTube queries and channel ids, X accounts, HN keywords and minimum points, GitHub keywords, subreddits, window (`hours`), caps and thresholds. **Every keyword list has a maximum in `max_per_list`** (queries 10, channels 12, X accounts 10, HN keywords 10, GitHub keywords 12, subreddits 4) and `tests/test_config.py` fails a PR that exceeds it: to add one past the cap, remove one first. Channel ids resolve from a YouTube channel-filtered search (`results?search_query=<name>&sp=EgIQAg%3D%3D`) by reading `channelRenderer.channelId`.
 
 ## Routine operations
 
