@@ -66,8 +66,12 @@ def _hint(e):
     return " (%s)" % text[:120] if text else ""
 
 
-def fetch(url, timeout=20, retries=3, headers=None, sleep=time.sleep):
-    """GET url and return the body as text. Retries on 429/5xx and network errors, honouring Retry-After."""
+def fetch(url, timeout=20, retries=3, headers=None, sleep=time.sleep, optional=False):
+    """GET url and return the body as text. Retries on 429/5xx and network errors, honouring Retry-After.
+
+    optional=True marks a secondary path: its failures are still raised, but they do not count
+    toward the per-host circuit breaker, so a blocked extra endpoint cannot take the host's
+    primary endpoints down with it."""
     hdrs = {"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9", "Accept-Encoding": "gzip"}
     if headers:
         hdrs.update(headers)
@@ -90,7 +94,7 @@ def fetch(url, timeout=20, retries=3, headers=None, sleep=time.sleep):
             reason = "HTTP %d" % e.code
             if e.code not in RETRY_STATUS:
                 raise FetchError(reason + _hint(e))
-            if e.code == 429 and attempt == retries - 1:
+            if e.code == 429 and attempt == retries - 1 and not optional:
                 _mark_host_dead(host)  # a rate limit is host-wide: stop hammering it for the rest of the run
             retry_after = e.headers.get("Retry-After") if e.headers else None
             if retry_after and str(retry_after).isdigit():
@@ -98,7 +102,8 @@ def fetch(url, timeout=20, retries=3, headers=None, sleep=time.sleep):
         except (urllib.error.URLError, OSError) as e:
             reason = "network: %s" % getattr(e, "reason", e)
             if attempt + 1 >= NETWORK_ATTEMPTS:  # give up on network errors sooner than on HTTP errors
-                _note_network_failure(host)
+                if not optional:
+                    _note_network_failure(host)
                 raise FetchError(reason)
         if attempt < retries - 1:
             sleep(wait)

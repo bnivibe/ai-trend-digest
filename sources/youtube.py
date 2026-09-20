@@ -136,8 +136,8 @@ def recent_shorts(cid, channel, now, hours, sleep, checked=SHORTS_CHECKED):
     """The channel's newest Shorts that fall inside the window. The tab is ordered newest
     first, so the scan stops at the first one that is too old."""
     kept = []
-    for short in parse_channel_shorts_html(fetch(CHANNEL_SHORTS_URL.format(cid=cid)), channel)[:checked]:
-        published = parse_watch_published(fetch(WATCH_URL.format(vid=short["video_id"])))
+    for short in parse_channel_shorts_html(fetch(CHANNEL_SHORTS_URL.format(cid=cid), optional=True), channel)[:checked]:
+        published = parse_watch_published(fetch(WATCH_URL.format(vid=short["video_id"]), optional=True))
         if not published:
             continue
         if hours_between(now, parse_iso(published)) > hours:
@@ -183,19 +183,23 @@ def collect(config, now, hours, sleep=time.sleep):
         except Exception as e:  # FetchError, JSON errors, anything: record and continue with the next query
             errors["search:" + q] = str(e) or type(e).__name__
         sleep(1)
-    for name, cid in cfg.get("channels", {}).items():
+    channels = cfg.get("channels", {})
+    for name, cid in channels.items():
         try:
             raws.extend(parse_channel_videos_html(fetch(CHANNEL_VIDEOS_URL.format(cid=cid)), name))
             fetched_ok = True
         except Exception as e:
             errors["channel:" + name] = str(e) or type(e).__name__
+    # Shorts come second and are best effort: the cloud sandbox's proxy answers 403 for the
+    # /shorts path, and one refusal is enough to know the path is closed for this run.
+    for name, cid in channels.items():
         try:
             raws.extend(recent_shorts(cid, name, now, hours, sleep))
         except Exception as e:
-            errors["shorts:" + name] = str(e) or type(e).__name__
+            errors["shorts"] = "%s (stopped after %s)" % (str(e) or type(e).__name__, name)
+            break
 
-    _collapse(errors, "channel:", "channels", len(cfg.get("channels", {})))
-    _collapse(errors, "shorts:", "shorts", len(cfg.get("channels", {})))
+    _collapse(errors, "channel:", "channels", len(channels))
     by_id = {}
     for raw in raws:  # verified Shorts carry exact timestamps; prefer them over rows without one
         prev = by_id.get(raw["video_id"])
