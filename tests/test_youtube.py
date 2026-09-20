@@ -114,3 +114,24 @@ class Collect(unittest.TestCase):
         with mock.patch("sources.youtube.fetch", side_effect=FetchError("HTTP 404")):
             res = youtube.collect(cfg, now=NOW, hours=24, sleep=lambda s: None)
         self.assertEqual(res["notes"]["errors"]["channels"], "HTTP 404 (2 of 2 channels)")
+
+
+class ShortsAreBestEffort(unittest.TestCase):
+    CONFIG = {"per_source_cap": 8, "youtube": {"queries": [], "channels": {"a": "1", "b": "2", "c": "3"}}}
+
+    def test_blocked_shorts_leave_uploads_intact_and_stop_after_one_failure(self):
+        calls = []
+
+        def fake(url, **kw):
+            calls.append(url)
+            if "/videos" in url:
+                return fixture("youtube_channel_videos_kimflip.html")
+            raise FetchError("network: Tunnel connection failed: 403 Forbidden")
+
+        with mock.patch("sources.youtube.fetch", side_effect=fake):
+            res = youtube.collect(self.CONFIG, now=datetime(2026, 9, 19, 12, 0, tzinfo=timezone.utc),
+                                  hours=24 * 400, sleep=lambda s: None)
+        self.assertTrue(res["items"], "uploads still arrive when Shorts are blocked")
+        self.assertEqual(len([u for u in calls if "/videos" in u]), 3, "every channel's uploads were tried")
+        self.assertEqual(len([u for u in calls if "/shorts" in u]), 1, "Shorts stopped after the first refusal")
+        self.assertIn("stopped after", res["notes"]["errors"]["shorts"])

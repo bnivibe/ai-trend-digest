@@ -158,3 +158,13 @@ class CircuitAndBudget(unittest.TestCase):
             with self.assertRaises(common.FetchError) as ctx:
                 common.fetch("http://x", sleep=lambda s: None)
         self.assertEqual(str(ctx.exception), "HTTP 404")
+
+    def test_optional_failures_do_not_kill_the_host(self):
+        err = urllib.error.URLError("timed out")
+        with mock.patch("sources.common.urllib.request.urlopen", side_effect=[err] * 8):
+            for path in ("a", "b", "c"):
+                with self.assertRaises(common.FetchError):
+                    common.fetch("http://mixed.example/" + path, sleep=lambda s: None, optional=True)
+            with self.assertRaises(common.FetchError) as ctx:
+                common.fetch("http://mixed.example/primary", sleep=lambda s: None)
+        self.assertIn("network:", str(ctx.exception))  # still tried, not skipped
