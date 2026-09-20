@@ -9,6 +9,7 @@ What the owner reads to the end. `prompt/digest.md` uses this file when choosing
 - Career framing for the AI era from people inside big tech: what separates the top 1%, taste as the moat, learning where the model fails.
 - Korean explainers that track one English primary source (a spec change, an Anthropic engineering post, a Simon Willison or Karpathy piece) and say what it changes in day-to-day work. The value is the reading of the source, not the news itself.
 - Claude Code ecosystem internals: MCP spec changes, Skills and how to test them (LLM as a judge, lifecycle, retiring a skill), context management (compact, clear, subagents, rewind), token budgets.
+- Reading the shipped artifact itself to find what has not been announced: a binary, a changelog, a spec diff, with the uncertainty stated plainly rather than sold as a scoop.
 - The cost mechanics of agent harnesses: prompt caching and KV cache behaviour, what breaks the cache (tool definitions, idle TTL, pruning history), token budgets, and who profits from a cache miss.
 - Language is not a filter. Korean-language practitioner content counts as much as English.
 
@@ -38,3 +39,5 @@ A candidate squarely about one of these three takes a slot ahead of a candidate 
    Why: reads the 2026-07-28 MCP spec change (stateless, request-response like REST) through Simon Willison's post: why held connections were the problem, serverless economics, no backward compatibility, and the answer to "isn't it just an API wrapper".
 7. 2026-07-24 · LinkedIn · Jeongmin Lee (jyoung105) · 코딩 에이전트 비용을 줄이고 싶다면, prompt caching 구조를 알아야 합니다 · https://www.linkedin.com/posts/jyoung105_activity-7486263712614555648-4f7a
    Why: a Korean reading of Armin Ronacher's post on how the Pi coding agent uses prompt caching, cut to five points: changing one tool definition invalidates the whole cache, the 5-minute TTL, one cache miss is the most expensive event in a session, pruning history costs more than it saves, and gateways earn more on misses. Agentic mechanics plus cost, from a primary source.
+8. 2026-09-16 · YouTube (Short) · 김플립 - LLM 코딩 · 클로드코드 /limit-reset 다음 버전, 바이너리 까보니 이미 들어있습니다 · https://youtube.com/shorts/htC7_Ay2Qy4
+   Why: found the unreleased `/limit-reset` command inside the Claude Code v2.1.273 binary and said outright that reading the binary guarantees nothing. Two minutes, one concrete finding, no overclaim. Shorts count: format is not a filter, the subject is.

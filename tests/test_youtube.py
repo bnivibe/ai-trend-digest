@@ -7,6 +7,7 @@ from sources.common import FetchError
 from tests.helpers import fixture
 
 NOW = datetime(2026, 9, 9, 22, 0, tzinfo=timezone.utc)
+SHORTS_NOW = datetime(2026, 9, 16, 12, 0, tzinfo=timezone.utc)
 
 
 class SearchParse(unittest.TestCase):
@@ -24,25 +25,64 @@ class SearchParse(unittest.TestCase):
         self.assertEqual(youtube.parse_search_html("<html></html>"), [])
 
 
-class RssParse(unittest.TestCase):
-    def test_parses_channel_feed(self):
-        items = youtube.parse_rss_xml(fixture("youtube_channel_rss_anthropic.xml"))
-        self.assertEqual(len(items), 15)
-        self.assertEqual(items[0]["channel"], "Anthropic")
-        self.assertTrue(items[0]["published_at"].startswith("2026-09-01T19:21"))
-        self.assertIsInstance(items[0]["views"], int)
-        self.assertGreater(items[0]["views"], 0)
-        self.assertTrue(all(len(i["video_id"]) == 11 for i in items))
+class ChannelVideosParse(unittest.TestCase):
+    """The /videos tab replaced feeds/videos.xml, which 404s everywhere since 2026-09-19."""
+
+    def test_parses_uploads_with_relative_age(self):
+        items = youtube.parse_channel_videos_html(fixture("youtube_channel_videos_kimflip.html"), "김플립")
+        self.assertGreaterEqual(len(items), 10)
+        first = items[0]
+        self.assertEqual(first["video_id"], "h8nVYAeo2sw")
+        self.assertEqual(first["channel"], "김플립")
+        self.assertEqual(first["views"], 10000)
+        self.assertEqual(first["age_hours"], 13 * 24.0)
+        self.assertTrue(all(i["title"] for i in items))
+
+    def test_empty_page(self):
+        self.assertEqual(youtube.parse_channel_videos_html("<html></html>"), [])
+
+
+class ChannelShortsParse(unittest.TestCase):
+    def test_parses_shorts_newest_first_without_dates(self):
+        items = youtube.parse_channel_shorts_html(fixture("youtube_channel_shorts_kimflip.html"), "김플립")
+        self.assertGreaterEqual(len(items), 5)
+        first = items[0]
+        self.assertEqual(first["video_id"], "htC7_Ay2Qy4")
+        self.assertEqual(first["views"], 4000)
+        self.assertIsNone(first["age_hours"])
+        self.assertIn("limit-reset", first["title"])
+
+
+class RecentShorts(unittest.TestCase):
+    WATCH = '<script>var ytInitialPlayerResponse = {"microformat": {"playerMicroformatRenderer": {"publishDate": "%s"}}};</script>'
+
+    def test_keeps_shorts_inside_the_window_and_stops_at_the_first_old_one(self):
+        pages = [fixture("youtube_channel_shorts_kimflip.html"),
+                 self.WATCH % "2026-09-16T05:00:00-07:00",   # newest, inside
+                 self.WATCH % "2026-09-09T05:00:00-07:00"]   # next, outside: scan stops
+        with mock.patch("sources.youtube.fetch", side_effect=pages):
+            kept = youtube.recent_shorts("cid", "김플립", SHORTS_NOW, 24, lambda s: None)
+        self.assertEqual([k["video_id"] for k in kept], ["htC7_Ay2Qy4"])
+        self.assertEqual(kept[0]["published_at"], "2026-09-16T05:00:00-07:00")
+
+    def test_nothing_recent(self):
+        pages = [fixture("youtube_channel_shorts_kimflip.html"), self.WATCH % "2026-09-01T05:00:00-07:00"]
+        with mock.patch("sources.youtube.fetch", side_effect=pages):
+            self.assertEqual(youtube.recent_shorts("cid", "c", SHORTS_NOW, 24, lambda s: None), [])
 
 
 class Collect(unittest.TestCase):
-    CONFIG = {"per_source_cap": 8, "youtube": {"queries": ["AI agents"], "channels": {"Anthropic": "UCrDwWp7EBBv4NwvScIpBDOA"}}}
+    CONFIG = {"per_source_cap": 8, "youtube": {"queries": ["AI agents"], "channels": {"김플립": "cid"}}}
 
     def fake_fetch(self, url, **kw):
         if "results?search_query" in url:
             return fixture("youtube_search_today_en.html")
-        if "feeds/videos.xml" in url:
-            return fixture("youtube_channel_rss_anthropic.xml")
+        if "/videos" in url:
+            return fixture("youtube_channel_videos_kimflip.html")
+        if "/shorts" in url:
+            return fixture("youtube_channel_shorts_kimflip.html")
+        if "watch?v=" in url:
+            return '<script>var ytInitialPlayerResponse = {"microformat": {"playerMicroformatRenderer": {"publishDate": "2026-09-09T12:00:00+00:00"}}};</script>'
         raise AssertionError("unexpected url " + url)
 
     def test_window_scores_and_cap(self):
@@ -54,10 +94,13 @@ class Collect(unittest.TestCase):
         self.assertTrue(all(c["source"] == "youtube" and c["age_hours"] <= 24 for c in items))
         self.assertEqual(items[0]["score"], 1.0)
         self.assertTrue(all(c["url"].startswith("https://www.youtube.com/watch?v=") for c in items))
-        rss_ids = {r["video_id"] for r in youtube.parse_rss_xml(fixture("youtube_channel_rss_anthropic.xml"))}
-        for c in items:
-            if c["id"] in rss_ids:
-                self.assertRegex(c["published_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
+
+    def test_a_shorts_video_can_reach_the_digest(self):
+        channels_only = {"per_source_cap": 8, "youtube": {"queries": [], "channels": {"김플립": "cid"}}}
+        with mock.patch("sources.youtube.fetch", side_effect=self.fake_fetch):
+            res = youtube.collect(channels_only, now=NOW, hours=24, sleep=lambda s: None)
+        self.assertTrue(any(c["id"] == "htC7_Ay2Qy4" for c in res["items"]),
+                        "the owner's taste Short must be able to arrive")
 
     def test_fetch_errors_are_recorded_not_raised(self):
         with mock.patch("sources.youtube.fetch", side_effect=FetchError("HTTP 429")):
@@ -66,52 +109,8 @@ class Collect(unittest.TestCase):
         self.assertFalse(res["fetched_ok"])
         self.assertIn("search:AI agents", res["notes"]["errors"])
 
-
-class Robustness(unittest.TestCase):
-    def test_search_parse_error_is_recorded_and_rss_still_runs(self):
-        def fake(url, **kw):
-            if "results?search_query" in url:
-                return "var ytInitialData = {broken};</script>"
-            return fixture("youtube_channel_rss_anthropic.xml")
-        with mock.patch("sources.youtube.fetch", side_effect=fake):
-            res = youtube.collect({"per_source_cap": 8, "youtube": {"queries": ["AI agents"], "channels": {"Anthropic": "x"}}},
-                                  now=datetime(2026, 9, 2, 0, 0, tzinfo=timezone.utc), hours=24, sleep=lambda s: None)
-        self.assertIn("search:AI agents", res["notes"]["errors"])
-        self.assertTrue(res["fetched_ok"])
-        self.assertTrue(any(c["author"] == "Anthropic" for c in res["items"]))
-
-    def test_identical_rss_failures_collapse_to_one_line(self):
-        def fake(url, **kw):
-            if "results?search_query" in url:
-                return fixture("youtube_search_today_en.html")
-            raise FetchError("HTTP 404")
-        cfg = {"per_source_cap": 8, "youtube": {"queries": ["AI agents"],
-               "channels": {"A": "1", "B": "2", "C": "3"}}}
-        with mock.patch("sources.youtube.fetch", side_effect=fake):
-            res = youtube.collect(cfg, now=NOW, hours=24, sleep=lambda s: None)
-        self.assertEqual(res["notes"]["errors"], {"rss": "HTTP 404 (3 of 3 channels)"})
-        self.assertEqual(res["items"][0]["source"], "youtube")
-
-
-class RssRetry(unittest.TestCase):
-    def test_404_is_retried_once_after_a_pause(self):
-        calls = iter([FetchError("HTTP 404"), fixture("youtube_channel_rss_anthropic.xml")])
-
-        def fake(url, **kw):
-            v = next(calls)
-            if isinstance(v, Exception):
-                raise v
-            return v
-        sleeps = []
-        with mock.patch("sources.youtube.fetch", side_effect=fake):
-            res = youtube.collect({"per_source_cap": 8, "youtube": {"queries": [], "channels": {"Anthropic": "x"}}},
-                                  now=datetime(2026, 9, 2, 0, 0, tzinfo=timezone.utc), hours=24, sleep=sleeps.append)
-        self.assertEqual(sleeps, [3])
-        self.assertTrue(res["fetched_ok"])
-        self.assertNotIn("rss", res["notes"]["errors"])
-
-    def test_second_404_is_recorded(self):
+    def test_channel_failures_collapse_into_one_line(self):
+        cfg = {"per_source_cap": 8, "youtube": {"queries": [], "channels": {"a": "1", "b": "2"}}}
         with mock.patch("sources.youtube.fetch", side_effect=FetchError("HTTP 404")):
-            res = youtube.collect({"per_source_cap": 8, "youtube": {"queries": [], "channels": {"Anthropic": "x"}}},
-                                  now=NOW, hours=24, sleep=lambda s: None)
-        self.assertEqual(res["notes"]["errors"], {"rss:Anthropic": "HTTP 404"})
+            res = youtube.collect(cfg, now=NOW, hours=24, sleep=lambda s: None)
+        self.assertEqual(res["notes"]["errors"]["channels"], "HTTP 404 (2 of 2 channels)")
