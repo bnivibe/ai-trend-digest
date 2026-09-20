@@ -5,7 +5,7 @@ Design: Google Drive `프로젝트/ai-trend-digest/2026-09-09-design.md`. This f
 
 ## How it works
 
-1. `python3 collect.py` pulls candidates from five sources without login (YouTube search + channel RSS, X syndication timelines, Hacker News Algolia, GitHub trending, Reddit hot RSS) into `out/candidates.json`.
+1. `python3 collect.py` pulls candidates from five sources without login (YouTube search + channel videos and Shorts tabs, X syndication timelines, Hacker News Algolia, GitHub trending, Reddit hot RSS) into `out/candidates.json`.
 2. Claude follows `prompt/digest.md` to cluster them into five topics in `out/digest.json`.
 3. `python3 post_discord.py out/digest.json` renders one webhook message with five embeds. `--failure "reason"` posts a failure notice instead. The channel is never silent.
 
@@ -30,7 +30,7 @@ The webhook is read only from `AI_TREND_DISCORD_WEBHOOK`. Locally it lives in `~
 | Source | Laptop | Cloud routine | Why |
 |---|---|---|---|
 | YouTube search | yes | yes | plain HTML |
-| YouTube channel RSS | yes | mostly (intermittent 404, retried once) | datacenter address treatment |
+| YouTube channel tabs (/videos, /shorts) | yes | yes | replaced feeds/videos.xml, which went to a global 404 on 2026-09-19 |
 | Hacker News | yes | yes | public API |
 | Reddit RSS | yes | yes | one call per subreddit, 3 s apart |
 | X syndication | yes (rate-limits after repeated testing) | no: HTTP 429 on the first call, the sandbox's egress address is already limited | the routine runs `--skip x`; X coverage comes from the WebSearch step in `prompt/digest.md` |
@@ -52,6 +52,8 @@ Skipped sources are listed in `meta.skipped` and do not count toward `sources_to
 
 ## Troubleshooting
 
+- Every channel fails at once with the same code: YouTube moved or retired the endpoint. `feeds/videos.xml` died this way on 2026-09-19 (404 for every channel, every URL form, from two networks, while channel pages stayed up); the fix was to parse `/videos` and `/shorts`, which use `lockupViewModel` and `shortsLockupViewModel`.
+- Shorts carry no date on the channel tab, so the collector checks the publish date of the newest two per channel on their watch pages and stops at the first one outside the window.
 - `parser_suspect` for a source: the page structure changed. Capture the new response (commands below), add it to `tests/fixtures/`, fix the parser, run the tests, open a PR.
 - X `stale`: the syndication cache for that account is frozen (six of the fourteen configured accounts were stale on 2026-09-09); nothing to fix, the account simply contributes nothing. Remove it from `config.json` if it stays stale for weeks.
 - Reddit `HTTP 429`: rate limited per IP; calls are already spaced 3 s, and running `--probe` right before a collect triggers it. It clears on the next run.
@@ -76,7 +78,8 @@ So a healthy cloud run is three sources ok (YouTube, Hacker News, Reddit) plus X
 ```bash
 UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36'
 curl -sS -A "$UA" -H "Accept-Language: en-US,en;q=0.9" "https://www.youtube.com/results?search_query=AI+agents&sp=EgIIAg%3D%3D&hl=en&gl=US" | gzip > tests/fixtures/youtube_search_today_en.html.gz
-curl -sS -A "$UA" "https://www.youtube.com/feeds/videos.xml?channel_id=UCrDwWp7EBBv4NwvScIpBDOA" | gzip > tests/fixtures/youtube_channel_rss_anthropic.xml.gz
+curl -sS -A "$UA" -H "Accept-Language: en-US" "https://www.youtube.com/channel/UCN9T0v5XMOhMgYunUAtVvwQ/videos?hl=en&gl=US" | gzip > tests/fixtures/youtube_channel_videos_kimflip.html.gz
+curl -sS -A "$UA" -H "Accept-Language: en-US" "https://www.youtube.com/channel/UCN9T0v5XMOhMgYunUAtVvwQ/shorts?hl=en&gl=US" | gzip > tests/fixtures/youtube_channel_shorts_kimflip.html.gz
 curl -sS -A "$UA" "https://syndication.twitter.com/srv/timeline-profile/screen-name/AnthropicAI" | gzip > tests/fixtures/x_timeline_fresh_anthropicai.html.gz
 curl -sS -A "$UA" "https://cdn.syndication.twimg.com/tweet-result?id=2079195918595764300&token=a" | gzip > tests/fixtures/x_tweet_result.json.gz
 curl -sS "https://hn.algolia.com/api/v1/search?query=AI&tags=story&numericFilters=points%3E50&hitsPerPage=10" | gzip > tests/fixtures/hn_algolia_ai_24h.json.gz
