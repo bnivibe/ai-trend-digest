@@ -7,6 +7,7 @@ What the owner reads to the end. `prompt/digest.md` uses this file when choosing
 - First-person accounts from practising engineers about how they actually work with agents: the exact prompts, what failed, what they changed. Method over product news.
 - The mechanics of agentic work: what context to feed, how to verify (AI judges, evals, mock reviewers), how to structure iteration (scaffolding, harnesses, token budgets).
 - Career framing for the AI era from people inside big tech: what separates the top 1%, taste as the moat, learning where the model fails.
+- Release readings that answer what the release means for someone who pays for it: cost per task rather than benchmark rank, whether the higher effort setting is worth it, cache pricing, subscriber limits. Four minutes, one primary source, no hype.
 - Korean explainers that track one English primary source (a spec change, an Anthropic engineering post, a Simon Willison or Karpathy piece) and say what it changes in day-to-day work. The value is the reading of the source, not the news itself.
 - Claude Code ecosystem internals: MCP spec changes, Skills and how to test them (LLM as a judge, lifecycle, retiring a skill), context management (compact, clear, subagents, rewind), token budgets.
 - Reading the shipped artifact itself to find what has not been announced: a binary, a changelog, a spec diff, with the uncertainty stated plainly rather than sold as a scoop.
@@ -41,3 +42,5 @@ A candidate squarely about one of these three takes a slot ahead of a candidate 
    Why: a Korean reading of Armin Ronacher's post on how the Pi coding agent uses prompt caching, cut to five points: changing one tool definition invalidates the whole cache, the 5-minute TTL, one cache miss is the most expensive event in a session, pruning history costs more than it saves, and gateways earn more on misses. Agentic mechanics plus cost, from a primary source.
 8. 2026-09-16 · YouTube (Short) · 김플립 - LLM 코딩 · 클로드코드 /limit-reset 다음 버전, 바이너리 까보니 이미 들어있습니다 · https://youtube.com/shorts/htC7_Ay2Qy4
    Why: found the unreleased `/limit-reset` command inside the Claude Code v2.1.273 binary and said outright that reading the binary guarantees nothing. Two minutes, one concrete finding, no overclaim. Shorts count: format is not a filter, the subject is.
+9. 2026-09-22 · YouTube · Claudical · Claude Opus 5.5 나왔습니다 | 성능, 가격, 말투 4분 정리 · https://youtu.be/vy7USjgHvbI
+   Why: a four-minute reading of Anthropic's Opus 5.5 announcement built around the questions a paying user has: cost per problem (the taxi-meter framing), whether max effort beat the default, cache read pricing, the two benchmarks lost to GPT-6 Astra, and what changes for Pro, Max and Team limits. Same day as the release, one primary source linked.
