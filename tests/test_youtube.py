@@ -135,3 +135,13 @@ class ShortsAreBestEffort(unittest.TestCase):
         self.assertEqual(len([u for u in calls if "/videos" in u]), 3, "every channel's uploads were tried")
         self.assertEqual(len([u for u in calls if "/shorts" in u]), 1, "Shorts stopped after the first refusal")
         self.assertIn("stopped after", res["notes"]["errors"]["shorts"])
+
+
+class BareViewCount(unittest.TestCase):
+    def test_channel_that_omits_the_word_views(self):
+        items = youtube.parse_channel_videos_html(fixture("youtube_channel_videos_syntax.html"), "Syntax")
+        self.assertGreaterEqual(len(items), 10)
+        self.assertEqual(items[0]["video_id"], "7ZWB79HRRUw")
+        self.assertEqual(items[0]["views"], 59000)
+        self.assertEqual(items[0]["age_hours"], 72.0)
+        self.assertTrue(all(i["views"] for i in items), "every upload needs a view count or it can never rank")
