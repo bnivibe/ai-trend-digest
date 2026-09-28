@@ -46,7 +46,8 @@
       "GoogleDeepMind",
       "arena",
       "cursor_ai",
-      "ollama"
+      "ollama",
+      "trq212"
     ],
     "removed_as_stale_2026_09_09": [
       "karpathy",
