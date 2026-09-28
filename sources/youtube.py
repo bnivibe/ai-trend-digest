@@ -100,7 +100,9 @@ def parse_channel_videos_html(html, channel=""):
         items.append({"video_id": vid, "title": (md.get("title") or {}).get("content") or "",
                       "channel": channel,
                       "age_hours": next((relative_age_hours(p) for p in parts if "ago" in p), None),
-                      "views": next((parse_count(p) for p in parts if "view" in p), None),
+                      # "10K views" on most channels, a bare "59K" on others: the count is the
+                      # part that is not an age
+                      "views": next((parse_count(p) for p in parts if "ago" not in p and parse_count(p) is not None), None),
                       "snippet": ""})
     return items
 
