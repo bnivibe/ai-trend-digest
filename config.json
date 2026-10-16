@@ -19,7 +19,8 @@
       "에이전틱 엔지니어링",
       "AI 에이전트 개발자",
       "클로드 코드",
-      "agent harness"
+      "agent harness",
+      "AI reverse engineering"
     ],
     "channels": {
       "Anthropic": "UCrDwWp7EBBv4NwvScIpBDOA",
@@ -73,7 +74,8 @@
       "OpenAI",
       "Anthropic",
       "MCP",
-      "harness"
+      "harness",
+      "reverse engineer"
     ],
     "min_points": 50
   },
