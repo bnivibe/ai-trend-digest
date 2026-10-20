@@ -48,3 +48,7 @@ python3 collect.py --dry-run
 
 Operations notes (cloud routine, network settings, troubleshooting, fixture capture) are in
 [docs/operations.md](docs/operations.md).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
