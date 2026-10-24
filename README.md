@@ -1,5 +1,11 @@
 # ai-trend-digest
 
+<!-- bnitech:card -->
+- **Problem:** AI news for developers is spread over YouTube, X, Hacker News, GitHub and Reddit, and most of it repeats.
+- **Who it helps:** Developers who want five AI topics a day instead of five feeds (summaries are in Korean by default).
+- **Try it (about 5 minutes):** Clone this repo and run `python3 collect.py --dry-run` to print today's top candidates per source, without logging in anywhere or writing files; for the daily digest in your own Discord, follow `docs/operations.md`.
+<!-- /bnitech:card -->
+
 A daily AI-for-developers news digest. It collects the last 24 hours from five public
 sources, has Claude group and rank them into five topics, and posts the result to Discord
 every morning at 07:00 Vancouver time. It has run unattended as a scheduled Claude Code
