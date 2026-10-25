@@ -20,7 +20,8 @@
       "AI 에이전트 개발자",
       "클로드 코드",
       "agent harness",
-      "AI reverse engineering"
+      "AI reverse engineering",
+      "Claude Code skills"
     ],
     "channels": {
       "Anthropic": "UCrDwWp7EBBv4NwvScIpBDOA",
@@ -49,7 +50,8 @@
       "arena",
       "cursor_ai",
       "ollama",
-      "trq212"
+      "trq212",
+      "poteto"
     ],
     "removed_as_stale_2026_09_09": [
       "karpathy",
