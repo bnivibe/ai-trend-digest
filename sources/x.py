@@ -47,9 +47,18 @@ def parse_timeline_html(html):
     return rows
 
 
+class TweetUnavailable(Exception):
+    """tweet-result held no tweet, e.g. a TweetTombstone for a deleted post (seen 2026-10-30)."""
+
+
 def parse_tweet_json(text):
     """tweet-result JSON -> the same row shape as parse_timeline_html."""
     t = json.loads(text)
+    if t.get("__typename") == "TweetWithVisibilityResults":
+        t = t.get("tweet") or {}
+    if "created_at" not in t:
+        reason = ((t.get("tombstone") or {}).get("text") or {}).get("text")
+        raise TweetUnavailable("%s: %s" % (t.get("__typename", "tombstone"), reason) if reason else "no tweet in the response")
     created = parse_iso(t["created_at"])  # accepts both '...:11.000Z' and '...:11Z'
     return {"id": t.get("id_str"), "handle": (t.get("user") or {}).get("screen_name", ""),
             "text": t.get("text", ""), "created_at": created,
@@ -91,9 +100,17 @@ def fetch_tweet(tweet_id, now=None):
     return _to_candidate(parse_tweet_json(fetch(TWEET_URL.format(id=tweet_id))), now or now_utc())
 
 
-if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "tweet":
-        print(json.dumps(fetch_tweet(sys.argv[2]), ensure_ascii=False, indent=2))
-    else:
+def main(argv):
+    if len(argv) != 3 or argv[1] != "tweet":
         print("usage: python3 -m sources.x tweet <tweet_id>")
-        sys.exit(2)
+        return 2
+    try:
+        print(json.dumps(fetch_tweet(argv[2]), ensure_ascii=False, indent=2))
+    except TweetUnavailable as e:
+        sys.stderr.write("tweet %s unavailable: %s\n" % (argv[2], e))
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

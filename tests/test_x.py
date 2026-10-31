@@ -1,5 +1,7 @@
+import io
 import json
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
 from unittest import mock
 
@@ -32,6 +34,29 @@ class TweetParse(unittest.TestCase):
         self.assertEqual(row["handle"], "RobinhoodApp")
         self.assertEqual(row["likes"], 8725)
         self.assertEqual(row["created_at"].date().isoformat(), "2026-07-20")
+
+    def test_deleted_tweet_raises_tweet_unavailable(self):
+        # Captured 2026-10-30 for 2116023617364570171, which the cloud routine hit as KeyError: 'created_at'.
+        with self.assertRaises(x.TweetUnavailable) as cm:
+            x.parse_tweet_json(fixture("x_tweet_result_tombstone.json"))
+        self.assertEqual(str(cm.exception), "TweetTombstone: This Post was deleted by the Post author. Learn more")
+
+    def test_visibility_wrapper_is_unwrapped(self):
+        inner = json.loads(fixture("x_tweet_result.json"))
+        row = x.parse_tweet_json(json.dumps({"__typename": "TweetWithVisibilityResults", "tweet": inner}))
+        self.assertEqual(row["id"], "2079195918595764300")
+        self.assertEqual(row["likes"], 8725)
+
+    def test_response_without_a_tweet_raises_tweet_unavailable(self):
+        with self.assertRaises(x.TweetUnavailable) as cm:
+            x.parse_tweet_json("{}")
+        self.assertEqual(str(cm.exception), "no tweet in the response")
+
+    def test_tombstone_without_typename_still_raises_tweet_unavailable(self):
+        body = {"__typename": "TweetWithVisibilityResults", "tweet": {"tombstone": {"text": {"text": "Deleted"}}}}
+        with self.assertRaises(x.TweetUnavailable) as cm:
+            x.parse_tweet_json(json.dumps(body))
+        self.assertEqual(str(cm.exception), "tombstone: Deleted")
 
 
 class Collect(unittest.TestCase):
@@ -77,6 +102,25 @@ class FetchTweet(unittest.TestCase):
         self.assertEqual(c["url"], "https://x.com/RobinhoodApp/status/2079195918595764300")
         self.assertEqual(c["engagement"]["likes"], 8725)
         self.assertTrue(c["title"].startswith("Robinhood is now open to AI agents"))
+
+
+class Cli(unittest.TestCase):
+    def run_main(self, tweet_id, body):
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch("sources.x.fetch", return_value=body), redirect_stdout(out), redirect_stderr(err):
+            code = x.main(["x.py", "tweet", tweet_id])
+        return code, out.getvalue(), err.getvalue()
+
+    def test_live_tweet_prints_the_candidate(self):
+        code, out, err = self.run_main("2079195918595764300", fixture("x_tweet_result.json"))
+        self.assertEqual((code, err), (0, ""))
+        self.assertEqual(json.loads(out)["engagement"]["likes"], 8725)
+
+    def test_deleted_tweet_exits_1_with_one_line_on_stderr(self):
+        code, out, err = self.run_main("2116023617364570171", fixture("x_tweet_result_tombstone.json"))
+        self.assertEqual((code, out), (1, ""))
+        self.assertEqual(err, "tweet 2116023617364570171 unavailable: TweetTombstone: "
+                              "This Post was deleted by the Post author. Learn more\n")
 
 
 class Robustness(unittest.TestCase):
