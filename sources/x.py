@@ -58,7 +58,7 @@ def parse_tweet_json(text):
         t = t.get("tweet") or {}
     if "created_at" not in t:
         reason = ((t.get("tombstone") or {}).get("text") or {}).get("text")
-        raise TweetUnavailable("%s: %s" % (t["__typename"], reason) if reason else "no tweet in the response")
+        raise TweetUnavailable("%s: %s" % (t.get("__typename", "tombstone"), reason) if reason else "no tweet in the response")
     created = parse_iso(t["created_at"])  # accepts both '...:11.000Z' and '...:11Z'
     return {"id": t.get("id_str"), "handle": (t.get("user") or {}).get("screen_name", ""),
             "text": t.get("text", ""), "created_at": created,

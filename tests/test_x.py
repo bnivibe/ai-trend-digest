@@ -52,6 +52,12 @@ class TweetParse(unittest.TestCase):
             x.parse_tweet_json("{}")
         self.assertEqual(str(cm.exception), "no tweet in the response")
 
+    def test_tombstone_without_typename_still_raises_tweet_unavailable(self):
+        body = {"__typename": "TweetWithVisibilityResults", "tweet": {"tombstone": {"text": {"text": "Deleted"}}}}
+        with self.assertRaises(x.TweetUnavailable) as cm:
+            x.parse_tweet_json(json.dumps(body))
+        self.assertEqual(str(cm.exception), "tombstone: Deleted")
+
 
 class Collect(unittest.TestCase):
     def config(self, accounts):
