@@ -51,7 +51,8 @@
       "cursor_ai",
       "ollama",
       "trq212",
-      "poteto"
+      "poteto",
+      "claudeai"
     ],
     "removed_as_stale_2026_09_09": [
       "karpathy",
