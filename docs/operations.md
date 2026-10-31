@@ -87,6 +87,7 @@ curl -sS -A "$UA" "https://syndication.twitter.com/srv/timeline-profile/screen-n
 curl -sS -A "$UA" "https://syndication.twitter.com/srv/timeline-profile/screen-name/karpathy" | python3 tests/fixtures/minimize.py x | gzip -n > tests/fixtures/x_timeline_stale_karpathy.html.gz
 curl -sS -A "$UA" "https://github.com/trending?since=daily" | python3 tests/fixtures/minimize.py github | gzip -n > tests/fixtures/github_trending_daily.html.gz
 curl -sS -A "$UA" "https://cdn.syndication.twimg.com/tweet-result?id=2079195918595764300&token=a" | gzip -n > tests/fixtures/x_tweet_result.json.gz
+curl -sS -A "$UA" "https://cdn.syndication.twimg.com/tweet-result?id=2116023617364570171&token=a" | gzip -n > tests/fixtures/x_tweet_result_tombstone.json.gz
 curl -sS "https://hn.algolia.com/api/v1/search?query=AI&tags=story&numericFilters=points%3E50&hitsPerPage=10" | gzip -n > tests/fixtures/hn_algolia_ai_24h.json.gz
 curl -sS -A "$UA" "https://www.reddit.com/r/ClaudeAI/hot.rss?limit=10" | gzip -n > tests/fixtures/reddit_claudeai_hot.rss.gz
 ```
