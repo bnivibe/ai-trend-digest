@@ -34,7 +34,7 @@ cloud routine since September 2026.
 - Every keyword list in `config.json` has a cap, enforced by a test.
 - The Discord webhook is read only from an environment variable and never stored in the
   repository.
-- 79 unit tests run offline against [trimmed captures](tests/fixtures/minimize.py) of real
+- 85 unit tests run offline against [trimmed captures](tests/fixtures/minimize.py) of real
   responses.
 
 ## What broke, and what changed
